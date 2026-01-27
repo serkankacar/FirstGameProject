@@ -27,6 +27,7 @@
   <ItemGroup>
     <ProjectReference Include="..\OkeyGame.Domain\OkeyGame.Domain.csproj" />
     <ProjectReference Include="..\OkeyGame.Application\OkeyGame.Application.csproj" />
+    <ProjectReference Include="..\OkeyGame.Infrastructure\OkeyGame.Infrastructure.csproj" />
     <ProjectReference Include="..\OkeyGame.API\OkeyGame.API.csproj" />
   </ItemGroup>
 

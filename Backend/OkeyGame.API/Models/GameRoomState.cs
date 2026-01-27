@@ -119,6 +119,47 @@ public class GameRoomState
     /// </summary>
     public DateTime? TurnStartedAt { get; set; }
 
+    /// <summary>
+    /// Mevcut turun bitiş zamanı (zaman aşımı).
+    /// </summary>
+    public DateTime? TurnExpiresAt { get; set; }
+
+    #endregion
+
+    #region Tur Yönetimi
+
+    /// <summary>
+    /// Mevcut tur numarası (1'den başlar).
+    /// </summary>
+    public int TurnNumber { get; set; } = 0;
+
+    /// <summary>
+    /// Mevcut tur fazı.
+    /// 0 = WaitingForDraw, 1 = WaitingForDiscard, 2 = TurnCompleted
+    /// </summary>
+    public int TurnPhase { get; set; } = 0;
+
+    /// <summary>
+    /// Tur süresi (saniye).
+    /// </summary>
+    public int TurnDurationSeconds { get; set; } = 15;
+
+    /// <summary>
+    /// Bu turda taş çekildi mi?
+    /// </summary>
+    public bool HasDrawnThisTurn { get; set; } = false;
+
+    /// <summary>
+    /// Otomatik oynatma aktif mi?
+    /// </summary>
+    public bool IsAutoPlay { get; set; } = false;
+
+    /// <summary>
+    /// Oyun fazı.
+    /// 0 = WaitingForPlayers, 1 = ReadyToStart, 2 = Shuffling, 3 = Dealing, 4 = Playing, 5 = Finished, 6 = Cancelled
+    /// </summary>
+    public int GamePhase { get; set; } = 0;
+
     #endregion
 }
 
