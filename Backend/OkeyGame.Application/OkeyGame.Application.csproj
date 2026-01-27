@@ -1,0 +1,26 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <RootNamespace>OkeyGame.Application</RootNamespace>
+    <AssemblyName>OkeyGame.Application</AssemblyName>
+    
+    <!-- Kod analizi ve uyarılar -->
+    <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
+    <WarningLevel>5</WarningLevel>
+    <EnableNETAnalyzers>true</EnableNETAnalyzers>
+    <AnalysisLevel>latest</AnalysisLevel>
+  </PropertyGroup>
+
+  <PropertyGroup>
+    <Description>Okey Oyunu Application katmanı - Use Case ve DTO tanımlamaları</Description>
+    <Authors>FirstGame Team</Authors>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\OkeyGame.Domain\OkeyGame.Domain.csproj" />
+  </ItemGroup>
+
+</Project>
