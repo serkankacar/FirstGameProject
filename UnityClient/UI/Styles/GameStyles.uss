@@ -1,0 +1,250 @@
+/* ===========================================
+   OKEY OYUNU - UI TOOLKIT STİL DOSYASI
+   =========================================== */
+
+/* ----- Genel ----- */
+.root {
+    flex-grow: 1;
+    background-color: rgb(34, 85, 51);
+}
+
+/* ----- Taş Stilleri ----- */
+.tile {
+    width: 48px;
+    height: 64px;
+    border-radius: 6px;
+    transition-duration: 0.15s;
+    transition-property: scale, opacity;
+}
+
+.tile:hover {
+    scale: 1.05;
+}
+
+.tile--selected {
+    scale: 1.1;
+}
+
+.tile--dragging {
+    opacity: 0.8;
+    scale: 1.15;
+}
+
+.tile--okey {
+    background-color: rgb(255, 250, 220);
+}
+
+.tile--false-joker {
+    background-color: rgb(240, 230, 255);
+}
+
+/* Renk sınıfları */
+.tile--yellow .tile-value {
+    color: rgb(204, 153, 0);
+}
+
+.tile--blue .tile-value {
+    color: rgb(25, 102, 204);
+}
+
+.tile--black .tile-value {
+    color: rgb(38, 38, 38);
+}
+
+.tile--red .tile-value {
+    color: rgb(204, 25, 51);
+}
+
+/* ----- Istaka Stilleri ----- */
+.rack {
+    background-color: rgb(102, 64, 38);
+    border-radius: 10px;
+    padding: 10px;
+    flex-direction: column;
+    align-items: center;
+}
+
+.rack__row {
+    flex-direction: row;
+    margin-top: 4px;
+}
+
+.rack__slot {
+    width: 52px;
+    height: 68px;
+    background-color: rgba(89, 56, 30, 0.5);
+    border-radius: 4px;
+    margin-right: 2px;
+    align-items: center;
+    justify-content: center;
+}
+
+.rack__slot--highlight {
+    background-color: rgba(255, 215, 0, 0.4);
+    border-width: 2px;
+    border-color: rgb(255, 215, 0);
+}
+
+.rack__slot--occupied {
+    background-color: rgba(89, 56, 30, 0.3);
+}
+
+/* ----- Masa Elemanları ----- */
+.table-center {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    translate: -50% -50%;
+    flex-direction: row;
+    align-items: center;
+}
+
+.deck-container {
+    width: 100px;
+    height: 100px;
+    background-color: rgb(76, 51, 25);
+    border-radius: 10px;
+    align-items: center;
+    justify-content: center;
+    margin: 10px;
+}
+
+.deck-container:hover {
+    background-color: rgb(102, 68, 34);
+}
+
+.deck-count {
+    font-size: 24px;
+    color: white;
+    -unity-font-style: bold;
+}
+
+.discard-pile {
+    width: 100px;
+    height: 100px;
+    background-color: rgb(64, 43, 21);
+    border-radius: 10px;
+    align-items: center;
+    justify-content: center;
+    margin: 10px;
+}
+
+.discard-pile:hover {
+    background-color: rgb(89, 60, 30);
+}
+
+.indicator-container {
+    width: 80px;
+    height: 100px;
+    background-color: rgb(51, 34, 17);
+    border-radius: 8px;
+    align-items: center;
+    justify-content: center;
+    margin: 10px;
+}
+
+/* ----- Sıra Göstergesi ----- */
+.turn-indicator {
+    position: absolute;
+    top: 20px;
+    left: 0;
+    right: 0;
+    -unity-text-align: middle-center;
+    font-size: 24px;
+    color: white;
+}
+
+.turn-indicator--my-turn {
+    color: rgb(0, 255, 128);
+}
+
+.turn-indicator--waiting {
+    color: rgb(255, 255, 128);
+}
+
+/* ----- Butonlar ----- */
+.sort-button {
+    padding: 10px 20px;
+    background-color: rgb(76, 51, 25);
+    border-radius: 8px;
+    border-width: 0;
+    color: white;
+    font-size: 14px;
+    margin: 5px;
+}
+
+.sort-button:hover {
+    background-color: rgb(102, 68, 34);
+}
+
+.sort-button:active {
+    background-color: rgb(51, 34, 17);
+    scale: 0.95;
+}
+
+/* ----- Rakip Alanları ----- */
+.opponent-area {
+    position: absolute;
+    background-color: rgba(0, 0, 0, 0.3);
+    border-radius: 10px;
+    padding: 10px;
+    align-items: center;
+}
+
+.opponent-area--top {
+    top: 20px;
+    left: 50%;
+    translate: -50% 0;
+}
+
+.opponent-area--left {
+    top: 50%;
+    left: 20px;
+    translate: 0 -50%;
+}
+
+.opponent-area--right {
+    top: 50%;
+    right: 20px;
+    translate: 0 -50%;
+}
+
+.opponent-tile-count {
+    font-size: 18px;
+    color: white;
+    margin-top: 5px;
+}
+
+.opponent-name {
+    font-size: 14px;
+    color: rgb(200, 200, 200);
+}
+
+.opponent--disconnected {
+    opacity: 0.5;
+}
+
+/* ----- Animasyonlar ----- */
+.tile-enter {
+    scale: 0;
+    opacity: 0;
+    transition-duration: 0.3s;
+    transition-property: scale, opacity;
+}
+
+.tile-enter-active {
+    scale: 1;
+    opacity: 1;
+}
+
+.tile-exit {
+    scale: 1;
+    opacity: 1;
+    transition-duration: 0.2s;
+    transition-property: scale, opacity;
+}
+
+.tile-exit-active {
+    scale: 0;
+    opacity: 0;
+}

@@ -1,0 +1,65 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements" xmlns:uie="UnityEditor.UIElements" 
+         xsi="http://www.w3.org/2001/XMLSchema-instance" 
+         engine="UnityEngine.UIElements" editor="UnityEditor.UIElements" 
+         noNamespaceSchemaLocation="../../UIElementsSchema/UIElements.xsd" 
+         editor-extension-mode="False">
+    
+    <!-- Ana Container -->
+    <ui:VisualElement name="root" class="root" style="flex-grow: 1;">
+        
+        <!-- Sıra Göstergesi -->
+        <ui:Label name="turn-indicator" class="turn-indicator" text="" />
+        
+        <!-- Üst Rakip Alanı -->
+        <ui:VisualElement name="opponent-0" class="opponent-area opponent-area--top">
+            <ui:Label name="opponent-0-name" class="opponent-name" text="Rakip 1" />
+            <ui:Label name="opponent-0-tiles" class="opponent-tile-count" text="14" />
+        </ui:VisualElement>
+        
+        <!-- Sol Rakip Alanı -->
+        <ui:VisualElement name="opponent-1" class="opponent-area opponent-area--left">
+            <ui:Label name="opponent-1-name" class="opponent-name" text="Rakip 2" />
+            <ui:Label name="opponent-1-tiles" class="opponent-tile-count" text="14" />
+        </ui:VisualElement>
+        
+        <!-- Sağ Rakip Alanı -->
+        <ui:VisualElement name="opponent-2" class="opponent-area opponent-area--right">
+            <ui:Label name="opponent-2-name" class="opponent-name" text="Rakip 3" />
+            <ui:Label name="opponent-2-tiles" class="opponent-tile-count" text="14" />
+        </ui:VisualElement>
+        
+        <!-- Masa Ortası -->
+        <ui:VisualElement name="table-center" class="table-center">
+            
+            <!-- Gösterge Taşı -->
+            <ui:VisualElement name="indicator" class="indicator-container">
+                <ui:Label text="Gösterge" style="font-size: 10px; color: rgb(150, 150, 150);" />
+            </ui:VisualElement>
+            
+            <!-- Deste -->
+            <ui:VisualElement name="deck" class="deck-container">
+                <ui:Label text="Deste" style="font-size: 12px; color: rgb(150, 150, 150);" />
+                <ui:Label name="deck-count" class="deck-count" text="49" />
+            </ui:VisualElement>
+            
+            <!-- Atık Yığını -->
+            <ui:VisualElement name="discard-pile" class="discard-pile">
+                <ui:Label text="Atık" style="font-size: 12px; color: rgb(150, 150, 150);" />
+            </ui:VisualElement>
+            
+        </ui:VisualElement>
+        
+        <!-- Sıralama Butonları -->
+        <ui:VisualElement name="sort-buttons" style="position: absolute; bottom: 150px; left: 20px; flex-direction: row;">
+            <ui:Button name="sort-color-btn" class="sort-button" text="Renge Göre" />
+            <ui:Button name="sort-value-btn" class="sort-button" text="Sayıya Göre" />
+        </ui:VisualElement>
+        
+        <!-- Oyuncu Istakası (Programatik olarak eklenir) -->
+        <ui:VisualElement name="player-rack-container" 
+                          style="position: absolute; bottom: 20px; left: 0; right: 0; align-items: center;">
+        </ui:VisualElement>
+        
+    </ui:VisualElement>
+    
+</ui:UXML>
