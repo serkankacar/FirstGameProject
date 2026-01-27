@@ -19,11 +19,15 @@
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
       <PrivateAssets>all</PrivateAssets>
     </PackageReference>
+    <PackageReference Include="Moq" Version="4.20.70" />
+    <PackageReference Include="Microsoft.Extensions.Caching.Abstractions" Version="8.0.0" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="8.0.0" />
   </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\OkeyGame.Domain\OkeyGame.Domain.csproj" />
     <ProjectReference Include="..\OkeyGame.Application\OkeyGame.Application.csproj" />
+    <ProjectReference Include="..\OkeyGame.API\OkeyGame.API.csproj" />
   </ItemGroup>
 
 </Project>

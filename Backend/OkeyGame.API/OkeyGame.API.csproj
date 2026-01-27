@@ -1,0 +1,31 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <RootNamespace>OkeyGame.API</RootNamespace>
+    <AssemblyName>OkeyGame.API</AssemblyName>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- SignalR -->
+    <PackageReference Include="Microsoft.AspNetCore.SignalR.StackExchangeRedis" Version="8.0.0" />
+    
+    <!-- Redis Caching -->
+    <PackageReference Include="Microsoft.Extensions.Caching.StackExchangeRedis" Version="8.0.0" />
+    <PackageReference Include="StackExchange.Redis" Version="2.7.10" />
+    
+    <!-- JSON Serialization -->
+    <PackageReference Include="System.Text.Json" Version="8.0.5" />
+    
+    <!-- Swagger -->
+    <PackageReference Include="Swashbuckle.AspNetCore" Version="6.5.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\OkeyGame.Domain\OkeyGame.Domain.csproj" />
+    <ProjectReference Include="..\OkeyGame.Application\OkeyGame.Application.csproj" />
+  </ItemGroup>
+
+</Project>
