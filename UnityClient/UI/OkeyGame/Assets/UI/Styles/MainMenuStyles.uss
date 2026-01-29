@@ -1,0 +1,203 @@
+/* Main Menu Screen Styles */
+
+/* Root container - Full screen */
+.main-menu-container {
+    flex-grow: 1;
+    width: 100%;
+    height: 100%;
+    background-color: rgb(15, 65, 40);
+    align-items: center;
+    justify-content: center;
+    padding: 40px;
+    /* Gradient effect with darker edges */
+    background-image: linear-gradient(rgba(0, 0, 0, 0.3), rgba(0, 0, 0, 0) 30%, rgba(0, 0, 0, 0) 70%, rgba(0, 0, 0, 0.3));
+}
+
+/* Logo */
+.logo-container {
+    margin-bottom: 60px;
+    align-items: center;
+}
+
+.logo-text {
+    font-size: 72px;
+    color: rgb(255, 215, 0);
+    -unity-font-style: bold;
+    -unity-text-outline-width: 3px;
+    -unity-text-outline-color: rgb(100, 50, 0);
+    text-shadow: 0 4px 8px rgba(0, 0, 0, 0.5);
+}
+
+.logo-subtitle {
+    font-size: 24px;
+    color: rgb(200, 220, 200);
+    -unity-text-align: middle-center;
+    margin-top: 15px;
+    letter-spacing: 3px;
+}
+
+/* Menu buttons container */
+.menu-buttons-container {
+    width: 400px;
+    align-items: stretch;
+}
+
+/* Base button style */
+.menu-button {
+    height: 70px;
+    margin: 10px 0;
+    border-radius: 12px;
+    font-size: 24px;
+    -unity-font-style: bold;
+    border-width: 3px;
+    transition-duration: 0.2s;
+}
+
+.menu-button:hover {
+    scale: 1.05;
+}
+
+.menu-button:active {
+    scale: 0.98;
+}
+
+/* Play button - Primary */
+.play-button {
+    background-color: rgb(46, 139, 87);
+    border-color: rgb(34, 100, 60);
+    color: white;
+}
+
+.play-button:hover {
+    background-color: rgb(60, 160, 100);
+}
+
+/* Guest button */
+.guest-button {
+    background-color: rgb(70, 130, 180);
+    border-color: rgb(50, 100, 150);
+    color: white;
+}
+
+.guest-button:hover {
+    background-color: rgb(90, 150, 200);
+}
+
+/* Login button */
+.login-button {
+    background-color: rgb(100, 100, 100);
+    border-color: rgb(70, 70, 70);
+    color: white;
+}
+
+.login-button:hover {
+    background-color: rgb(120, 120, 120);
+}
+
+/* Settings button */
+.settings-button {
+    background-color: rgb(80, 80, 80);
+    border-color: rgb(60, 60, 60);
+    color: rgb(200, 200, 200);
+    height: 50px;
+    font-size: 18px;
+    margin-top: 30px;
+}
+
+/* Player info panel (when logged in) */
+.player-info-panel {
+    position: absolute;
+    top: 20px;
+    right: 20px;
+    background-color: rgba(0, 0, 0, 0.7);
+    border-radius: 10px;
+    padding: 15px 20px;
+    flex-direction: row;
+    align-items: center;
+}
+
+.player-avatar {
+    width: 50px;
+    height: 50px;
+    border-radius: 25px;
+    background-color: rgb(100, 100, 100);
+    margin-right: 15px;
+}
+
+.player-name {
+    font-size: 20px;
+    color: white;
+    -unity-font-style: bold;
+}
+
+.player-chips {
+    font-size: 16px;
+    color: rgb(255, 215, 0);
+    margin-top: 5px;
+}
+
+.player-elo {
+    font-size: 14px;
+    color: rgb(150, 200, 255);
+}
+
+/* Version text */
+.version-text {
+    position: absolute;
+    bottom: 20px;
+    right: 20px;
+    font-size: 14px;
+    color: rgba(255, 255, 255, 0.5);
+}
+
+/* Loading overlay */
+.loading-overlay {
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 0;
+    bottom: 0;
+    background-color: rgba(0, 0, 0, 0.8);
+    align-items: center;
+    justify-content: center;
+    display: none;
+}
+
+.loading-overlay.visible {
+    display: flex;
+}
+
+.loading-spinner {
+    width: 60px;
+    height: 60px;
+    border-radius: 30px;
+    border-width: 4px;
+    border-color: rgb(255, 215, 0);
+    border-top-color: transparent;
+}
+
+.loading-text {
+    font-size: 20px;
+    color: white;
+    margin-top: 20px;
+}
+
+/* Error Toast */
+.error-toast {
+    position: absolute;
+    bottom: 100px;
+    align-self: center;
+    background-color: rgb(192, 57, 43);
+    padding: 15px 30px;
+    border-radius: 10px;
+    display: none;
+}
+
+.error-toast.visible {
+    display: flex;
+}
+
+.error-text {
+    font-size: 16px;
+    color: white;
+}

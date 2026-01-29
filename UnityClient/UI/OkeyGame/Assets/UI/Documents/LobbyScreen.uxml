@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ui:UXML xmlns:ui="UnityEngine.UIElements">
+    <Style src="../Styles/LobbyStyles.uss" />
+    
+    <ui:VisualElement name="lobby-container" class="lobby-container">
+        <!-- Header -->
+        <ui:VisualElement class="lobby-header">
+            <ui:Button name="back-button" class="back-button" text="← Geri" />
+            <ui:Label class="lobby-title" text="🎮 Oda Listesi" />
+            <ui:Button name="refresh-button" class="back-button" text="🔄" />
+        </ui:VisualElement>
+
+        <!-- Room Filter -->
+        <ui:VisualElement class="room-filter">
+            <ui:Button name="filter-all" class="filter-button selected" text="Tümü" />
+            <ui:Button name="filter-waiting" class="filter-button" text="Bekleyenler" />
+            <ui:Button name="filter-low" class="filter-button" text="Düşük Bahis" />
+            <ui:Button name="filter-medium" class="filter-button" text="Orta Bahis" />
+            <ui:Button name="filter-high" class="filter-button" text="Yüksek Bahis" />
+        </ui:VisualElement>
+
+        <!-- Room List -->
+        <ui:VisualElement class="room-list">
+            <ui:ScrollView name="room-scroll" class="room-scroll">
+                <!-- Room cards will be added dynamically -->
+                <ui:VisualElement name="rooms-container">
+                </ui:VisualElement>
+                
+                <!-- Empty State -->
+                <ui:VisualElement name="empty-state" class="empty-state">
+                    <ui:Label class="empty-icon" text="🏠" />
+                    <ui:Label class="empty-text" text="Henüz aktif oda yok. Yeni oda oluşturun!" />
+                </ui:VisualElement>
+            </ui:ScrollView>
+        </ui:VisualElement>
+
+        <!-- Create Room Section -->
+        <ui:VisualElement class="create-room-section">
+            <ui:Button name="create-room-button" class="create-room-button" text="+ Yeni Oda Oluştur" />
+        </ui:VisualElement>
+    </ui:VisualElement>
+
+    <!-- Create Room Modal -->
+    <ui:VisualElement name="create-room-modal" class="create-room-modal">
+        <ui:VisualElement class="modal-content">
+            <ui:Label class="modal-title" text="Yeni Oda Oluştur" />
+            
+            <ui:VisualElement class="form-group">
+                <ui:Label class="form-label" text="Oda Adı" />
+                <ui:TextField name="room-name-input" class="form-input" placeholder="Oda adı girin..." />
+            </ui:VisualElement>
+
+            <ui:VisualElement class="form-group">
+                <ui:Label class="form-label" text="Bahis Miktarı" />
+                <ui:VisualElement name="stake-selector" class="stake-selector">
+                    <ui:Button name="stake-100" class="stake-option" text="💰 100" />
+                    <ui:Button name="stake-500" class="stake-option selected" text="💰 500" />
+                    <ui:Button name="stake-1000" class="stake-option" text="💰 1K" />
+                    <ui:Button name="stake-5000" class="stake-option" text="💰 5K" />
+                    <ui:Button name="stake-10000" class="stake-option" text="💰 10K" />
+                </ui:VisualElement>
+            </ui:VisualElement>
+
+            <ui:VisualElement class="modal-buttons">
+                <ui:Button name="modal-cancel" class="modal-button cancel" text="İptal" />
+                <ui:Button name="modal-create" class="modal-button create" text="Oluştur" />
+            </ui:VisualElement>
+        </ui:VisualElement>
+    </ui:VisualElement>
+</ui:UXML>

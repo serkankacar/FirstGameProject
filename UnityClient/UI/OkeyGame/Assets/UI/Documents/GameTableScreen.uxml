@@ -1,0 +1,115 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ui:UXML xmlns:ui="UnityEngine.UIElements" xmlns:uie="UnityEditor.UIElements" editor-extension-mode="False">
+    <Style src="project://database/Assets/UI/Styles/GameTableStyles.uss" />
+    
+    <ui:VisualElement name="game-table-container" class="game-table-container">
+        
+        <!-- Top Bar -->
+        <ui:VisualElement name="top-bar" class="top-bar">
+            <ui:VisualElement class="room-info">
+                <ui:Label text="Masa #1234" name="room-name" class="room-name" />
+                <ui:Label text="💰 1,000" name="stake-badge" class="stake-badge" />
+            </ui:VisualElement>
+            
+            <ui:VisualElement name="turn-timer" class="turn-timer">
+                <ui:Label text="⏱️" class="timer-icon" />
+                <ui:Label text="30" name="timer-text" class="timer-text" />
+            </ui:VisualElement>
+            
+            <ui:Button text="☰" name="menu-button" class="menu-button" />
+        </ui:VisualElement>
+        
+        <!-- Table Center Area -->
+        <ui:VisualElement name="table-center" class="table-center">
+            
+            <!-- Opponent Top (Seat 2) -->
+            <ui:VisualElement name="opponent-top" class="opponent-area top">
+                <ui:VisualElement name="opponent-info-2" class="opponent-info">
+                    <ui:Label text="Oyuncu 2" name="opponent-name-2" class="opponent-name" />
+                    <ui:Label text="🎴 14 taş" name="opponent-tiles-2" class="opponent-tiles-count" />
+                </ui:VisualElement>
+            </ui:VisualElement>
+            
+            <!-- Opponent Left (Seat 1) -->
+            <ui:VisualElement name="opponent-left" class="opponent-area left">
+                <ui:VisualElement name="opponent-info-1" class="opponent-info">
+                    <ui:Label text="Oyuncu 1" name="opponent-name-1" class="opponent-name" />
+                    <ui:Label text="🎴 14 taş" name="opponent-tiles-1" class="opponent-tiles-count" />
+                </ui:VisualElement>
+            </ui:VisualElement>
+            
+            <!-- Opponent Right (Seat 3) -->
+            <ui:VisualElement name="opponent-right" class="opponent-area right">
+                <ui:VisualElement name="opponent-info-3" class="opponent-info">
+                    <ui:Label text="Oyuncu 3" name="opponent-name-3" class="opponent-name" />
+                    <ui:Label text="🎴 14 taş" name="opponent-tiles-3" class="opponent-tiles-count" />
+                </ui:VisualElement>
+            </ui:VisualElement>
+            
+            <!-- Center: Indicator, Deck, Discard -->
+            <ui:VisualElement name="center-area" class="center-area">
+                
+                <!-- Indicator Tile -->
+                <ui:VisualElement name="indicator-container" class="indicator-container">
+                    <ui:Label text="GÖSTERGE" class="indicator-label" />
+                    <ui:VisualElement name="indicator-tile" class="indicator-tile">
+                        <ui:Label text="5" name="indicator-number" class="tile-number red" />
+                    </ui:VisualElement>
+                </ui:VisualElement>
+                
+                <!-- Deck -->
+                <ui:VisualElement name="deck-container" class="deck-container">
+                    <ui:Label text="DESTE" class="deck-label" />
+                    <ui:Button name="deck-pile" class="deck-pile">
+                        <ui:Label text="52" name="deck-count" class="deck-count" />
+                    </ui:Button>
+                </ui:VisualElement>
+                
+                <!-- Discard Pile -->
+                <ui:VisualElement name="discard-container" class="discard-container">
+                    <ui:Label text="ATILAN" class="discard-label" />
+                    <ui:Button name="discard-pile" class="discard-pile">
+                        <ui:Label text="" name="discard-tile-number" class="tile-number" />
+                    </ui:Button>
+                </ui:VisualElement>
+                
+            </ui:VisualElement>
+            
+        </ui:VisualElement>
+        
+        <!-- Player Hand Area (Bottom) -->
+        <ui:VisualElement name="player-hand-area" class="player-hand-area">
+            
+            <!-- Player Info Bar -->
+            <ui:VisualElement class="player-info-bar">
+                <ui:Label text="Rakibin sırası..." name="player-status" class="player-status" />
+                <ui:VisualElement class="action-buttons">
+                    <ui:Button text="🗑️ Taşı At" name="discard-button" class="action-button discard" />
+                    <ui:Button text="🏆 OKEY!" name="win-button" class="action-button win" />
+                </ui:VisualElement>
+            </ui:VisualElement>
+            
+            <!-- Hand Tiles Container -->
+            <ui:VisualElement name="hand-tiles-container" class="hand-tiles-container">
+                <!-- Tiles will be generated dynamically -->
+            </ui:VisualElement>
+            
+        </ui:VisualElement>
+        
+        <!-- Game Over Modal -->
+        <ui:VisualElement name="game-over-modal" class="game-over-modal">
+            <ui:VisualElement class="game-over-panel">
+                <ui:Label text="🎉 OYUN BİTTİ!" class="game-over-title" />
+                <ui:Label text="Kazanan: Oyuncu1" name="winner-name" class="winner-name" />
+                <ui:Label text="Çiftler ile kazandı!" name="win-type" class="win-type" />
+                
+                <ui:VisualElement name="results-container" style="width: 100%; margin-top: 20px;">
+                    <!-- Results will be generated dynamically -->
+                </ui:VisualElement>
+                
+                <ui:Button text="Devam Et" name="continue-button" class="continue-button" />
+            </ui:VisualElement>
+        </ui:VisualElement>
+        
+    </ui:VisualElement>
+</ui:UXML>

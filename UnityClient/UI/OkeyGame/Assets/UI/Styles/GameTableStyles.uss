@@ -1,0 +1,433 @@
+/* Game Table Screen Styles */
+
+/* Root container - Okey table background */
+.game-table-container {
+    flex-grow: 1;
+    background-color: rgb(30, 80, 50);
+    /* background-image: resource('Textures/TableFelt'); - Optional: Add texture later */
+}
+
+/* Top bar - Timer and menu */
+.top-bar {
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 20px;
+    background-color: rgba(0, 0, 0, 0.5);
+}
+
+.room-info {
+    flex-direction: row;
+    align-items: center;
+}
+
+.room-name {
+    font-size: 18px;
+    color: white;
+    -unity-font-style: bold;
+}
+
+.stake-badge {
+    background-color: rgb(255, 215, 0);
+    color: rgb(50, 50, 50);
+    padding: 5px 12px;
+    border-radius: 15px;
+    font-size: 14px;
+    -unity-font-style: bold;
+    margin-left: 10px;
+}
+
+.turn-timer {
+    flex-direction: row;
+    align-items: center;
+    background-color: rgba(255, 255, 255, 0.1);
+    padding: 8px 15px;
+    border-radius: 20px;
+}
+
+.timer-icon {
+    font-size: 20px;
+    margin-right: 8px;
+}
+
+.timer-text {
+    font-size: 24px;
+    color: white;
+    -unity-font-style: bold;
+    min-width: 50px;
+}
+
+.timer-text.warning {
+    color: rgb(255, 200, 0);
+}
+
+.timer-text.critical {
+    color: rgb(255, 80, 80);
+}
+
+.menu-button {
+    width: 40px;
+    height: 40px;
+    font-size: 24px;
+    background-color: rgba(255, 255, 255, 0.2);
+    border-radius: 20px;
+    border-width: 0;
+}
+
+/* Table center area */
+.table-center {
+    flex-grow: 1;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+}
+
+/* Opponent areas (top, left, right) */
+.opponent-area {
+    position: absolute;
+    align-items: center;
+}
+
+.opponent-area.top {
+    top: 80px;
+    left: 50%;
+    translate: -50% 0;
+}
+
+.opponent-area.left {
+    left: 20px;
+    top: 50%;
+    translate: 0 -50%;
+}
+
+.opponent-area.right {
+    right: 20px;
+    top: 50%;
+    translate: 0 -50%;
+}
+
+.opponent-info {
+    background-color: rgba(0, 0, 0, 0.6);
+    padding: 10px 15px;
+    border-radius: 10px;
+    align-items: center;
+    min-width: 120px;
+}
+
+.opponent-name {
+    font-size: 14px;
+    color: white;
+    -unity-font-style: bold;
+}
+
+.opponent-tiles-count {
+    font-size: 12px;
+    color: rgb(200, 200, 200);
+    margin-top: 3px;
+}
+
+.opponent-info.current-turn {
+    border-width: 2px;
+    border-color: rgb(255, 215, 0);
+}
+
+.opponent-tiles-container {
+    flex-direction: row;
+    margin-top: 10px;
+}
+
+.opponent-tile-back {
+    width: 25px;
+    height: 35px;
+    background-color: rgb(139, 69, 19);
+    border-radius: 3px;
+    margin: 1px;
+    border-width: 1px;
+    border-color: rgb(100, 50, 10);
+}
+
+/* Center deck and discard */
+.center-area {
+    flex-direction: row;
+    align-items: center;
+    justify-content: center;
+}
+
+/* Indicator tile */
+.indicator-container {
+    align-items: center;
+    margin-right: 40px;
+}
+
+.indicator-label {
+    font-size: 12px;
+    color: rgb(200, 200, 200);
+    margin-bottom: 5px;
+}
+
+.indicator-tile {
+    width: 40px;
+    height: 55px;
+    border-radius: 5px;
+    align-items: center;
+    justify-content: center;
+    border-width: 2px;
+    border-color: rgb(255, 215, 0);
+}
+
+/* Deck */
+.deck-container {
+    align-items: center;
+    margin-right: 30px;
+}
+
+.deck-label {
+    font-size: 12px;
+    color: rgb(200, 200, 200);
+    margin-bottom: 5px;
+}
+
+.deck-pile {
+    width: 50px;
+    height: 70px;
+    background-color: rgb(139, 69, 19);
+    border-radius: 5px;
+    border-width: 2px;
+    border-color: rgb(100, 50, 10);
+    align-items: center;
+    justify-content: center;
+}
+
+.deck-count {
+    font-size: 16px;
+    color: white;
+    -unity-font-style: bold;
+}
+
+.deck-pile:hover {
+    border-color: rgb(255, 215, 0);
+    scale: 1.05;
+}
+
+.deck-pile.can-draw {
+    border-color: rgb(100, 255, 100);
+}
+
+/* Discard pile */
+.discard-container {
+    align-items: center;
+}
+
+.discard-label {
+    font-size: 12px;
+    color: rgb(200, 200, 200);
+    margin-bottom: 5px;
+}
+
+.discard-pile {
+    width: 50px;
+    height: 70px;
+    background-color: rgba(0, 0, 0, 0.3);
+    border-radius: 5px;
+    border-width: 2px;
+    border-color: rgb(100, 100, 100);
+    align-items: center;
+    justify-content: center;
+}
+
+.discard-pile:hover {
+    border-color: rgb(255, 215, 0);
+}
+
+.discard-pile.can-draw {
+    border-color: rgb(100, 255, 100);
+    border-width: 3px;
+}
+
+/* Player hand area (bottom) */
+.player-hand-area {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background-color: rgba(0, 0, 0, 0.7);
+    padding: 15px 20px 20px 20px;
+}
+
+.player-info-bar {
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+}
+
+.player-status {
+    font-size: 16px;
+    color: white;
+}
+
+.player-status.my-turn {
+    color: rgb(100, 255, 100);
+    -unity-font-style: bold;
+}
+
+.action-buttons {
+    flex-direction: row;
+}
+
+.action-button {
+    padding: 8px 20px;
+    margin-left: 10px;
+    border-radius: 8px;
+    font-size: 14px;
+    -unity-font-style: bold;
+}
+
+.action-button.discard {
+    background-color: rgb(220, 80, 80);
+    color: white;
+}
+
+.action-button.win {
+    background-color: rgb(255, 215, 0);
+    color: rgb(50, 50, 50);
+}
+
+.action-button:disabled {
+    opacity: 0.5;
+}
+
+/* Hand tiles container */
+.hand-tiles-container {
+    flex-direction: row;
+    justify-content: center;
+    flex-wrap: wrap;
+}
+
+/* Individual tile */
+.tile {
+    width: 45px;
+    height: 65px;
+    background-color: rgb(255, 250, 240);
+    border-radius: 5px;
+    border-width: 2px;
+    border-color: rgb(180, 170, 160);
+    margin: 3px;
+    align-items: center;
+    justify-content: center;
+    transition-duration: 0.1s;
+}
+
+.tile:hover {
+    translate: 0 -10px;
+    border-color: rgb(100, 200, 255);
+}
+
+.tile.selected {
+    translate: 0 -15px;
+    border-color: rgb(255, 215, 0);
+    border-width: 3px;
+}
+
+.tile.just-drawn {
+    border-color: rgb(100, 255, 100);
+    border-width: 3px;
+}
+
+.tile.okey {
+    background-color: rgb(255, 245, 220);
+    border-color: rgb(255, 215, 0);
+    border-width: 2px;
+}
+
+.tile-number {
+    font-size: 24px;
+    -unity-font-style: bold;
+}
+
+.tile-number.yellow { color: rgb(200, 150, 0); }
+.tile-number.blue { color: rgb(30, 100, 180); }
+.tile-number.black { color: rgb(30, 30, 30); }
+.tile-number.red { color: rgb(180, 30, 30); }
+
+.tile-joker-label {
+    font-size: 10px;
+    color: rgb(150, 150, 150);
+}
+
+/* Separator between tile groups */
+.tile-separator {
+    width: 10px;
+    height: 65px;
+}
+
+/* Game over modal */
+.game-over-modal {
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 0;
+    bottom: 0;
+    background-color: rgba(0, 0, 0, 0.85);
+    align-items: center;
+    justify-content: center;
+    display: none;
+}
+
+.game-over-panel {
+    background-color: rgb(40, 40, 40);
+    border-radius: 20px;
+    padding: 30px 50px;
+    align-items: center;
+    min-width: 400px;
+}
+
+.game-over-title {
+    font-size: 36px;
+    color: rgb(255, 215, 0);
+    -unity-font-style: bold;
+    margin-bottom: 20px;
+}
+
+.winner-name {
+    font-size: 24px;
+    color: white;
+    margin-bottom: 10px;
+}
+
+.win-type {
+    font-size: 18px;
+    color: rgb(150, 200, 255);
+    margin-bottom: 20px;
+}
+
+.result-row {
+    flex-direction: row;
+    justify-content: space-between;
+    width: 100%;
+    padding: 10px 0;
+    border-bottom-width: 1px;
+    border-bottom-color: rgba(255, 255, 255, 0.1);
+}
+
+.result-player {
+    font-size: 16px;
+    color: white;
+}
+
+.result-chips {
+    font-size: 16px;
+}
+
+.result-chips.positive { color: rgb(100, 255, 100); }
+.result-chips.negative { color: rgb(255, 100, 100); }
+
+.continue-button {
+    margin-top: 30px;
+    padding: 15px 40px;
+    background-color: rgb(46, 139, 87);
+    border-radius: 10px;
+    font-size: 18px;
+    color: white;
+    -unity-font-style: bold;
+}

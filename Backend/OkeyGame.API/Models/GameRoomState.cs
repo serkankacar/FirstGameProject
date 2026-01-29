@@ -21,6 +21,16 @@ public class GameRoomState
     public required string RoomName { get; set; }
 
     /// <summary>
+    /// Masa bahis miktarı.
+    /// </summary>
+    public long Stake { get; set; } = 500;
+
+    /// <summary>
+    /// Oyun başladı mı?
+    /// </summary>
+    public bool IsGameStarted => State == GameState.InProgress || State == GameState.Finished;
+
+    /// <summary>
     /// Oyunun mevcut durumu.
     /// </summary>
     public GameState State { get; set; } = GameState.WaitingForPlayers;

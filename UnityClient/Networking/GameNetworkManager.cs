@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using UnityEngine;
 
@@ -8,15 +9,7 @@ namespace OkeyGame.Unity.Networking
     /// <summary>
     /// Unity için SignalR bağlantı yöneticisi.
     /// GameHub ile iletişim kurar.
-    /// 
-    /// KULLANIM:
-    /// 1. NuGet'ten Microsoft.AspNetCore.SignalR.Client paketi yükleyin
-    /// 2. GameNetworkManager.Instance.ConnectAsync() çağırın
-    /// 3. Event'lere abone olun (OnGameStarted, OnTileDiscarded, vb.)
-    /// 
-    /// NOT: Bu dosya SignalR Client kütüphanesi gerektirir.
-    /// Unity'de com.unity.nuget.mono-cecil ile veya 
-    /// DLL olarak import edilebilir.
+    /// SignalRWebSocketClient kullanarak WebSocket üzerinden bağlanır.
     /// </summary>
     public class GameNetworkManager : MonoBehaviour
     {
@@ -42,7 +35,7 @@ namespace OkeyGame.Unity.Networking
         #region Ayarlar
 
         [Header("Bağlantı Ayarları")]
-        [SerializeField] private string _serverUrl = "https://localhost:5001";
+        [SerializeField] private string _serverUrl = "http://localhost:57392";
         [SerializeField] private float _reconnectionDelay = 2f;
         [SerializeField] private int _maxReconnectionAttempts = 10;
 
@@ -52,10 +45,11 @@ namespace OkeyGame.Unity.Networking
 
         public Guid PlayerId { get; private set; }
         public Guid? CurrentRoomId { get; private set; }
-        public bool IsConnected { get; private set; }
+        public bool IsConnected => _connection?.IsConnected ?? false;
         public string ConnectionState { get; private set; } = "Disconnected";
 
         private int _reconnectionAttempts;
+        private SignalRWebSocketClient _connection;
 
         #endregion
 
@@ -172,23 +166,53 @@ namespace OkeyGame.Unity.Networking
                 ConnectionState = "Connecting";
                 Debug.Log($"[GameNetwork] Bağlanılıyor: {_serverUrl}/gamehub");
 
-                // TODO: SignalR HubConnection oluştur
-                // _connection = new HubConnectionBuilder()
-                //     .WithUrl($"{_serverUrl}/gamehub?playerId={PlayerId}")
-                //     .WithAutomaticReconnect(new RetryPolicy())
-                //     .Build();
+                // Mevcut bağlantıyı temizle
+                if (_connection != null)
+                {
+                    await _connection.DisconnectAsync();
+                    _connection = null;
+                }
+
+                // Yeni bağlantı oluştur
+                _connection = new SignalRWebSocketClient();
                 
-                // RegisterHandlers();
-                // await _connection.StartAsync();
+                // Event handler'ları kaydet
+                _connection.OnConnected += () => {
+                    Debug.Log("[GameNetwork] SignalR bağlantısı kuruldu");
+                    OnConnected?.Invoke();
+                };
+                
+                _connection.OnDisconnected += (reason) => {
+                    Debug.Log($"[GameNetwork] SignalR bağlantısı koptu: {reason}");
+                    ConnectionState = "Disconnected";
+                    OnDisconnected?.Invoke(reason);
+                };
+                
+                _connection.OnError += (error) => {
+                    Debug.LogError($"[GameNetwork] SignalR hatası: {error}");
+                    OnError?.Invoke(error);
+                };
+                
+                // Hub method handler'larını kaydet
+                RegisterHandlers();
 
-                IsConnected = true;
-                ConnectionState = "Connected";
-                _reconnectionAttempts = 0;
+                // Bağlan
+                var hubUrl = $"{_serverUrl}/gamehub?playerId={PlayerId}";
+                var connected = await _connection.ConnectAsync(hubUrl);
 
-                OnConnected?.Invoke();
-                Debug.Log("[GameNetwork] Bağlantı başarılı!");
-
-                return true;
+                if (connected)
+                {
+                    ConnectionState = "Connected";
+                    _reconnectionAttempts = 0;
+                    Debug.Log("[GameNetwork] Bağlantı başarılı!");
+                    return true;
+                }
+                else
+                {
+                    ConnectionState = "Error";
+                    Debug.LogError("[GameNetwork] Bağlantı kurulamadı");
+                    return false;
+                }
             }
             catch (Exception ex)
             {
@@ -198,6 +222,119 @@ namespace OkeyGame.Unity.Networking
                 return false;
             }
         }
+        
+        /// <summary>
+        /// SignalR Hub method handler'larını kayıt eder.
+        /// </summary>
+        private void RegisterHandlers()
+        {
+            // Oda olayları
+            _connection.On("RoomJoined", (argsJson) => {
+                var data = ParseRoomJoinedData(argsJson);
+                if (data != null)
+                {
+                    CurrentRoomId = data.RoomId;
+                    OnRoomJoined?.Invoke(data);
+                }
+            });
+            
+            _connection.On("OnRoomCreated", (argsJson) => {
+                var data = ParseRoomCreatedData(argsJson);
+                if (data != null)
+                {
+                    CurrentRoomId = data.RoomId;
+                    OnRoomCreated?.Invoke(data);
+                }
+            });
+            
+            _connection.On("OnPlayerJoined", (argsJson) => {
+                var data = ParsePlayerJoinedData(argsJson);
+                if (data != null)
+                {
+                    OnPlayerJoined?.Invoke(data);
+                }
+            });
+            
+            _connection.On("OnPlayerLeft", (argsJson) => {
+                var guidMatch = Regex.Match(argsJson, "\"?([0-9a-fA-F-]{36})\"?");
+                if (guidMatch.Success && Guid.TryParse(guidMatch.Groups[1].Value, out var playerId))
+                {
+                    OnPlayerLeft?.Invoke(playerId);
+                }
+            });
+            
+            // Oyun olayları
+            _connection.On("OnGameStarted", (argsJson) => {
+                var data = ParseGameStartedData(argsJson);
+                if (data != null)
+                {
+                    OnGameStarted?.Invoke(data);
+                }
+            });
+            
+            _connection.On("OnTileDrawn", (argsJson) => {
+                var data = ParseTileDrawnData(argsJson);
+                if (data != null)
+                {
+                    OnTileDrawn?.Invoke(data);
+                }
+            });
+            
+            _connection.On("OnTileDiscarded", (argsJson) => {
+                var data = ParseTileDiscardedData(argsJson);
+                if (data != null)
+                {
+                    OnTileDiscarded?.Invoke(data);
+                }
+            });
+            
+            _connection.On("OnOpponentDrewTile", (argsJson) => {
+                var data = ParseOpponentDrewData(argsJson);
+                if (data != null)
+                {
+                    OnOpponentDrewTile?.Invoke(data);
+                }
+            });
+            
+            _connection.On("OnDeckUpdated", (argsJson) => {
+                var data = ParseDeckUpdatedData(argsJson);
+                if (data != null)
+                {
+                    OnDeckUpdated?.Invoke(data);
+                }
+            });
+            
+            _connection.On("OnPlayerDisconnected", (argsJson) => {
+                var data = ParsePlayerDisconnectedData(argsJson);
+                if (data != null)
+                {
+                    OnPlayerDisconnected?.Invoke(data);
+                }
+            });
+            
+            _connection.On("OnPlayerReconnected", (argsJson) => {
+                var guidMatch = Regex.Match(argsJson, "\"PlayerId\":\"([^\"]+)\"");
+                if (guidMatch.Success && Guid.TryParse(guidMatch.Groups[1].Value, out var playerId))
+                {
+                    OnPlayerReconnected?.Invoke(playerId);
+                }
+            });
+            
+            _connection.On("OnReconnected", (argsJson) => {
+                var data = ParseReconnectedData(argsJson);
+                if (data != null)
+                {
+                    CurrentRoomId = data.RoomId;
+                    OnReconnected?.Invoke(data);
+                }
+            });
+            
+            _connection.On("OnError", (argsJson) => {
+                var msgMatch = Regex.Match(argsJson, "\"(?:Message|message)\":\"([^\"]+)\"");
+                var errorMessage = msgMatch.Success ? msgMatch.Groups[1].Value : argsJson;
+                OnError?.Invoke(errorMessage);
+            });
+        }
 
         /// <summary>
         /// Bağlantıyı kapatır.
@@ -206,8 +343,12 @@ namespace OkeyGame.Unity.Networking
         {
             try
             {
-                // TODO: await _connection?.StopAsync();
-                IsConnected = false;
+                if (_connection != null)
+                {
+                    await _connection.DisconnectAsync();
+                    _connection = null;
+                }
+                
                 ConnectionState = "Disconnected";
                 CurrentRoomId = null;
                 OnDisconnected?.Invoke("Manual disconnect");
@@ -257,7 +398,19 @@ namespace OkeyGame.Unity.Networking
             EnsureConnected();
             Debug.Log($"[GameNetwork] Oda oluşturuluyor: {roomName}");
             
-            // TODO: await _connection.InvokeAsync("CreateRoom", roomName, playerName);
+            // stake varsayılan 0
+            await _connection.InvokeAsync("CreateRoom", roomName, 0L);
+        }
+
+        /// <summary>
+        /// Yeni oda oluşturur (stake ile).
+        /// </summary>
+        public async Task CreateRoomAsync(string roomName, long stake)
+        {
+            EnsureConnected();
+            Debug.Log($"[GameNetwork] Oda oluşturuluyor: {roomName}, Stake: {stake}");
+            
+            await _connection.InvokeAsync("CreateRoom", roomName, stake);
         }
 
         /// <summary>
@@ -268,7 +421,7 @@ namespace OkeyGame.Unity.Networking
             EnsureConnected();
             Debug.Log($"[GameNetwork] Odaya katılınıyor: {roomId}");
             
-            // TODO: await _connection.InvokeAsync("JoinRoom", roomId, playerName);
+            await _connection.InvokeAsync<string>("JoinRoom", roomId.ToString());
         }
 
         /// <summary>
@@ -281,7 +434,8 @@ namespace OkeyGame.Unity.Networking
             EnsureConnected();
             Debug.Log($"[GameNetwork] Odadan ayrılınıyor: {CurrentRoomId}");
             
-            // TODO: await _connection.InvokeAsync("LeaveRoom", CurrentRoomId.Value);
+            await _connection.InvokeAsync<string>("LeaveRoom", CurrentRoomId.Value.ToString());
+            CurrentRoomId = null;
         }
 
         /// <summary>
@@ -294,7 +448,7 @@ namespace OkeyGame.Unity.Networking
             EnsureConnected();
             Debug.Log($"[GameNetwork] Oyun başlatılıyor: {CurrentRoomId}");
             
-            // TODO: await _connection.InvokeAsync("StartGame", CurrentRoomId.Value);
+            await _connection.InvokeAsync<string>("StartGame", CurrentRoomId.Value.ToString());
         }
 
         #endregion
@@ -311,7 +465,7 @@ namespace OkeyGame.Unity.Networking
             EnsureConnected();
             Debug.Log("[GameNetwork] Desteden taş çekiliyor");
             
-            // TODO: await _connection.InvokeAsync("DrawTile", CurrentRoomId.Value);
+            await _connection.InvokeAsync<string>("DrawTile", CurrentRoomId.Value.ToString());
         }
 
         /// <summary>
@@ -324,7 +478,7 @@ namespace OkeyGame.Unity.Networking
             EnsureConnected();
             Debug.Log("[GameNetwork] Atıktan taş çekiliyor");
             
-            // TODO: await _connection.InvokeAsync("DrawFromDiscard", CurrentRoomId.Value);
+            await _connection.InvokeAsync<string>("DrawFromDiscard", CurrentRoomId.Value.ToString());
         }
 
         /// <summary>
@@ -337,7 +491,7 @@ namespace OkeyGame.Unity.Networking
             EnsureConnected();
             Debug.Log($"[GameNetwork] Taş atılıyor: {tileId}");
             
-            // TODO: await _connection.InvokeAsync("ThrowTile", CurrentRoomId.Value, tileId);
+            await _connection.InvokeAsync("ThrowTile", CurrentRoomId.Value.ToString(), tileId);
         }
 
         #endregion
@@ -371,66 +525,245 @@ namespace OkeyGame.Unity.Networking
 
         #endregion
 
-        #region SignalR Handler Kayıtları (TODO: Implement)
-
-        /*
-        private void RegisterHandlers()
+        #region JSON Parsing Methods
+        
+        private RoomJoinedData ParseRoomJoinedData(string json)
         {
-            _connection.On<object>("OnRoomCreated", data => {
-                MainThreadDispatcher.Enqueue(() => {
-                    var roomData = JsonConvert.DeserializeObject<RoomCreatedData>(data.ToString());
-                    CurrentRoomId = roomData.RoomId;
-                    OnRoomCreated?.Invoke(roomData);
-                });
-            });
-
-            _connection.On<object>("OnRoomJoined", data => {
-                MainThreadDispatcher.Enqueue(() => {
-                    var roomData = JsonConvert.DeserializeObject<RoomJoinedData>(data.ToString());
-                    CurrentRoomId = roomData.RoomId;
-                    OnRoomJoined?.Invoke(roomData);
-                });
-            });
-
-            _connection.On<object>("OnGameStarted", data => {
-                MainThreadDispatcher.Enqueue(() => {
-                    var gameData = JsonConvert.DeserializeObject<GameStartedData>(data.ToString());
-                    OnGameStarted?.Invoke(gameData);
-                });
-            });
-
-            _connection.On<object>("OnTileDrawn", data => {
-                MainThreadDispatcher.Enqueue(() => {
-                    var tileData = JsonConvert.DeserializeObject<TileDrawnData>(data.ToString());
-                    OnTileDrawn?.Invoke(tileData);
-                });
-            });
-
-            _connection.On<object>("OnTileDiscarded", data => {
-                MainThreadDispatcher.Enqueue(() => {
-                    var discardData = JsonConvert.DeserializeObject<TileDiscardedData>(data.ToString());
-                    OnTileDiscarded?.Invoke(discardData);
-                });
-            });
-
-            _connection.On<object>("OnError", data => {
-                MainThreadDispatcher.Enqueue(() => {
-                    var errorData = JsonConvert.DeserializeObject<ErrorData>(data.ToString());
-                    OnError?.Invoke(errorData.Message);
-                });
-            });
-
-            _connection.On<object>("OnReconnected", data => {
-                MainThreadDispatcher.Enqueue(() => {
-                    var reconnectData = JsonConvert.DeserializeObject<ReconnectedData>(data.ToString());
-                    CurrentRoomId = reconnectData.RoomId;
-                    OnReconnected?.Invoke(reconnectData);
-                });
-            });
-
-            // ... diğer handler'lar
+            try
+            {
+                var data = new RoomJoinedData();
+                
+                // Id veya RoomId parse et
+                var idMatch = Regex.Match(json, "\"(?:Id|RoomId)\":\"?([0-9a-fA-F-]+)\"?");
+                if (idMatch.Success && Guid.TryParse(idMatch.Groups[1].Value, out var roomId))
+                    data.RoomId = roomId;
+                
+                // RoomName veya Name
+                var nameMatch = Regex.Match(json, "\"(?:RoomName|Name)\":\"([^\"]+)\"");
+                if (nameMatch.Success)
+                    data.RoomName = nameMatch.Groups[1].Value;
+                
+                return data;
+            }
+            catch (Exception ex)
+            {
+                Debug.LogError($"[GameNetwork] RoomJoinedData parse error: {ex.Message}");
+                return null;
+            }
         }
-        */
+        
+        private RoomCreatedData ParseRoomCreatedData(string json)
+        {
+            try
+            {
+                var data = new RoomCreatedData();
+                
+                var idMatch = Regex.Match(json, "\"(?:Id|RoomId)\":\"?([0-9a-fA-F-]+)\"?");
+                if (idMatch.Success && Guid.TryParse(idMatch.Groups[1].Value, out var roomId))
+                    data.RoomId = roomId;
+                
+                var nameMatch = Regex.Match(json, "\"(?:RoomName|Name)\":\"([^\"]+)\"");
+                if (nameMatch.Success)
+                    data.RoomName = nameMatch.Groups[1].Value;
+                
+                return data;
+            }
+            catch (Exception ex)
+            {
+                Debug.LogError($"[GameNetwork] RoomCreatedData parse error: {ex.Message}");
+                return null;
+            }
+        }
+        
+        private PlayerJoinedData ParsePlayerJoinedData(string json)
+        {
+            try
+            {
+                var data = new PlayerJoinedData();
+                
+                var idMatch = Regex.Match(json, "\"PlayerId\":\"([^\"]+)\"");
+                if (idMatch.Success && Guid.TryParse(idMatch.Groups[1].Value, out var playerId))
+                    data.PlayerId = playerId;
+                
+                var nameMatch = Regex.Match(json, "\"PlayerName\":\"([^\"]+)\"");
+                if (nameMatch.Success)
+                    data.PlayerName = nameMatch.Groups[1].Value;
+                
+                var posMatch = Regex.Match(json, "\"Position\":(\\d+)");
+                if (posMatch.Success)
+                    data.Position = int.Parse(posMatch.Groups[1].Value);
+                
+                return data;
+            }
+            catch (Exception ex)
+            {
+                Debug.LogError($"[GameNetwork] PlayerJoinedData parse error: {ex.Message}");
+                return null;
+            }
+        }
+        
+        private GameStartedData ParseGameStartedData(string json)
+        {
+            try
+            {
+                var data = new GameStartedData();
+                
+                var idMatch = Regex.Match(json, "\"RoomId\":\"([^\"]+)\"");
+                if (idMatch.Success && Guid.TryParse(idMatch.Groups[1].Value, out var roomId))
+                    data.RoomId = roomId;
+                
+                return data;
+            }
+            catch (Exception ex)
+            {
+                Debug.LogError($"[GameNetwork] GameStartedData parse error: {ex.Message}");
+                return null;
+            }
+        }
+        
+        private TileDrawnData ParseTileDrawnData(string json)
+        {
+            try
+            {
+                var data = new TileDrawnData();
+                // Tile içindeki veriler
+                data.Tile = new TileData();
+                
+                var tileIdMatch = Regex.Match(json, "\"Id\":(\\d+)");
+                if (tileIdMatch.Success)
+                    data.Tile.Id = int.Parse(tileIdMatch.Groups[1].Value);
+                
+                var colorMatch = Regex.Match(json, "\"Color\":(\\d+)");
+                if (colorMatch.Success)
+                    data.Tile.Color = int.Parse(colorMatch.Groups[1].Value);
+                
+                var valueMatch = Regex.Match(json, "\"Value\":(\\d+)");
+                if (valueMatch.Success)
+                    data.Tile.Value = int.Parse(valueMatch.Groups[1].Value);
+                
+                var fromDiscardMatch = Regex.Match(json, "\"FromDiscard\":(true|false)");
+                if (fromDiscardMatch.Success)
+                    data.FromDiscard = fromDiscardMatch.Groups[1].Value == "true";
+                
+                return data;
+            }
+            catch (Exception ex)
+            {
+                Debug.LogError($"[GameNetwork] TileDrawnData parse error: {ex.Message}");
+                return null;
+            }
+        }
+        
+        private TileDiscardedData ParseTileDiscardedData(string json)
+        {
+            try
+            {
+                var data = new TileDiscardedData();
+                
+                var playerIdMatch = Regex.Match(json, "\"PlayerId\":\"([^\"]+)\"");
+                if (playerIdMatch.Success && Guid.TryParse(playerIdMatch.Groups[1].Value, out var playerId))
+                    data.PlayerId = playerId;
+                
+                var tileIdMatch = Regex.Match(json, "\"TileId\":(\\d+)");
+                if (tileIdMatch.Success)
+                    data.TileId = int.Parse(tileIdMatch.Groups[1].Value);
+                
+                return data;
+            }
+            catch (Exception ex)
+            {
+                Debug.LogError($"[GameNetwork] TileDiscardedData parse error: {ex.Message}");
+                return null;
+            }
+        }
+        
+        private OpponentDrewData ParseOpponentDrewData(string json)
+        {
+            try
+            {
+                var data = new OpponentDrewData();
+                
+                var playerIdMatch = Regex.Match(json, "\"PlayerId\":\"([^\"]+)\"");
+                if (playerIdMatch.Success && Guid.TryParse(playerIdMatch.Groups[1].Value, out var playerId))
+                    data.PlayerId = playerId;
+                
+                var fromDiscardMatch = Regex.Match(json, "\"FromDiscard\":(true|false)");
+                if (fromDiscardMatch.Success)
+                    data.FromDiscard = fromDiscardMatch.Groups[1].Value == "true";
+                
+                return data;
+            }
+            catch (Exception ex)
+            {
+                Debug.LogError($"[GameNetwork] OpponentDrewData parse error: {ex.Message}");
+                return null;
+            }
+        }
+        
+        private DeckUpdatedData ParseDeckUpdatedData(string json)
+        {
+            try
+            {
+                var data = new DeckUpdatedData();
+                
+                var remainingMatch = Regex.Match(json, "\"RemainingTileCount\":(\\d+)");
+                if (remainingMatch.Success)
+                    data.RemainingTileCount = int.Parse(remainingMatch.Groups[1].Value);
+                
+                return data;
+            }
+            catch (Exception ex)
+            {
+                Debug.LogError($"[GameNetwork] DeckUpdatedData parse error: {ex.Message}");
+                return null;
+            }
+        }
+        
+        private PlayerDisconnectedData ParsePlayerDisconnectedData(string json)
+        {
+            try
+            {
+                var data = new PlayerDisconnectedData();
+                
+                var playerIdMatch = Regex.Match(json, "\"PlayerId\":\"([^\"]+)\"");
+                if (playerIdMatch.Success && Guid.TryParse(playerIdMatch.Groups[1].Value, out var playerId))
+                    data.PlayerId = playerId;
+                
+                var timeoutMatch = Regex.Match(json, "\"ReconnectionTimeoutSeconds\":(\\d+)");
+                if (timeoutMatch.Success)
+                    data.ReconnectionTimeoutSeconds = int.Parse(timeoutMatch.Groups[1].Value);
+                
+                return data;
+            }
+            catch (Exception ex)
+            {
+                Debug.LogError($"[GameNetwork] PlayerDisconnectedData parse error: {ex.Message}");
+                return null;
+            }
+        }
+        
+        private ReconnectedData ParseReconnectedData(string json)
+        {
+            try
+            {
+                var data = new ReconnectedData();
+                
+                var roomIdMatch = Regex.Match(json, "\"RoomId\":\"([^\"]+)\"");
+                if (roomIdMatch.Success && Guid.TryParse(roomIdMatch.Groups[1].Value, out var roomId))
+                    data.RoomId = roomId;
+                
+                var messageMatch = Regex.Match(json, "\"Message\":\"([^\"]+)\"");
+                if (messageMatch.Success)
+                    data.Message = messageMatch.Groups[1].Value;
+                
+                return data;
+            }
+            catch (Exception ex)
+            {
+                Debug.LogError($"[GameNetwork] ReconnectedData parse error: {ex.Message}");
+                return null;
+            }
+        }
 
         #endregion
     }

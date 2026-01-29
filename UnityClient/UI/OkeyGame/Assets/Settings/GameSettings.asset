@@ -1,0 +1,29 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 0e5a405ac9797524e8d381b2aea84041, type: 3}
+  m_Name: GameSettings
+  m_EditorClassIdentifier: Assembly-CSharp::OkeyGame.Core.GameSettings
+  _serverUrl: https://localhost:57391
+  _signalRHubPath: /gamehub
+  _connectionTimeout: 30
+  _reconnectDelay: 2
+  _maxReconnectAttempts: 5
+  _turnTimeoutSeconds: 30
+  _autoPlayWarningSeconds: 5
+  _enableSoundEffects: 1
+  _enableVibration: 1
+  _enableNotifications: 1
+  _animationSpeed: 1
+  _showTileNumbers: 1
+  _tableTheme: classic
+  _debugMode: 0
+  _logNetworkMessages: 0

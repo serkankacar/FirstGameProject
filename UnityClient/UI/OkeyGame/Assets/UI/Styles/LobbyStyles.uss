@@ -1,0 +1,263 @@
+/* Lobby Screen Styles - Oda Listesi */
+
+/* Container */
+.lobby-container {
+    flex: 1;
+    background-color: rgb(25, 90, 50);
+    padding: 20px;
+}
+
+/* Header */
+.lobby-header {
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px;
+    margin-bottom: 20px;
+}
+
+.lobby-title {
+    font-size: 32px;
+    color: white;
+    -unity-font-style: bold;
+}
+
+.back-button {
+    background-color: rgba(0, 0, 0, 0.5);
+    border-radius: 5px;
+    padding: 10px 20px;
+    color: white;
+    font-size: 18px;
+}
+
+/* Room Filter */
+.room-filter {
+    flex-direction: row;
+    margin-bottom: 20px;
+    padding: 10px;
+    background-color: rgba(0, 0, 0, 0.3);
+    border-radius: 10px;
+}
+
+.filter-button {
+    padding: 10px 20px;
+    margin-right: 10px;
+    background-color: rgba(255, 255, 255, 0.1);
+    border-radius: 5px;
+    color: white;
+    font-size: 16px;
+}
+
+.filter-button.selected {
+    background-color: rgb(255, 193, 7);
+    color: rgb(33, 33, 33);
+}
+
+/* Room List */
+.room-list {
+    flex: 1;
+}
+
+.room-scroll {
+    flex: 1;
+}
+
+/* Room Card */
+.room-card {
+    flex-direction: row;
+    background-color: rgba(255, 255, 255, 0.1);
+    border-radius: 10px;
+    padding: 15px;
+    margin-bottom: 10px;
+    align-items: center;
+}
+
+.room-card:hover {
+    background-color: rgba(255, 255, 255, 0.2);
+}
+
+.room-info {
+    flex: 1;
+}
+
+.room-name {
+    font-size: 20px;
+    color: white;
+    -unity-font-style: bold;
+    margin-bottom: 5px;
+}
+
+.room-details {
+    flex-direction: row;
+    align-items: center;
+}
+
+.room-stake {
+    font-size: 16px;
+    color: rgb(255, 193, 7);
+    margin-right: 20px;
+}
+
+.room-players {
+    font-size: 14px;
+    color: rgba(255, 255, 255, 0.7);
+}
+
+.room-status {
+    padding: 5px 10px;
+    border-radius: 5px;
+    font-size: 14px;
+}
+
+.room-status.waiting {
+    background-color: rgb(76, 175, 80);
+    color: white;
+}
+
+.room-status.playing {
+    background-color: rgb(244, 67, 54);
+    color: white;
+}
+
+.room-status.full {
+    background-color: rgba(255, 255, 255, 0.3);
+    color: rgba(255, 255, 255, 0.5);
+}
+
+.join-button {
+    background-color: rgb(76, 175, 80);
+    border-radius: 5px;
+    padding: 10px 25px;
+    color: white;
+    font-size: 16px;
+    margin-left: 15px;
+}
+
+.join-button:disabled {
+    background-color: rgba(255, 255, 255, 0.2);
+    color: rgba(255, 255, 255, 0.5);
+}
+
+/* Create Room Button */
+.create-room-section {
+    margin-top: 20px;
+    padding: 15px;
+    background-color: rgba(0, 0, 0, 0.3);
+    border-radius: 10px;
+    align-items: center;
+}
+
+.create-room-button {
+    background-color: rgb(255, 193, 7);
+    border-radius: 10px;
+    padding: 15px 40px;
+    font-size: 20px;
+    -unity-font-style: bold;
+    color: rgb(33, 33, 33);
+}
+
+/* Empty State */
+.empty-state {
+    flex: 1;
+    align-items: center;
+    justify-content: center;
+}
+
+.empty-icon {
+    font-size: 64px;
+    margin-bottom: 20px;
+}
+
+.empty-text {
+    font-size: 18px;
+    color: rgba(255, 255, 255, 0.7);
+}
+
+/* Create Room Modal */
+.create-room-modal {
+    position: absolute;
+    left: 0;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(0, 0, 0, 0.8);
+    align-items: center;
+    justify-content: center;
+    display: none;
+}
+
+.modal-content {
+    background-color: rgb(35, 100, 60);
+    border-radius: 15px;
+    padding: 30px;
+    min-width: 400px;
+}
+
+.modal-title {
+    font-size: 24px;
+    color: white;
+    -unity-font-style: bold;
+    margin-bottom: 20px;
+    -unity-text-align: middle-center;
+}
+
+.form-group {
+    margin-bottom: 15px;
+}
+
+.form-label {
+    font-size: 14px;
+    color: rgba(255, 255, 255, 0.8);
+    margin-bottom: 5px;
+}
+
+.form-input {
+    background-color: rgba(0, 0, 0, 0.3);
+    border-radius: 5px;
+    padding: 10px;
+    color: white;
+    font-size: 16px;
+}
+
+.stake-selector {
+    flex-direction: row;
+    flex-wrap: wrap;
+}
+
+.stake-option {
+    padding: 10px 15px;
+    margin-right: 10px;
+    margin-bottom: 10px;
+    background-color: rgba(0, 0, 0, 0.3);
+    border-radius: 5px;
+    color: white;
+    font-size: 14px;
+}
+
+.stake-option.selected {
+    background-color: rgb(255, 193, 7);
+    color: rgb(33, 33, 33);
+}
+
+.modal-buttons {
+    flex-direction: row;
+    justify-content: flex-end;
+    margin-top: 20px;
+}
+
+.modal-button {
+    padding: 10px 25px;
+    border-radius: 5px;
+    font-size: 16px;
+    margin-left: 10px;
+}
+
+.modal-button.cancel {
+    background-color: rgba(255, 255, 255, 0.2);
+    color: white;
+}
+
+.modal-button.create {
+    background-color: rgb(76, 175, 80);
+    color: white;
+}

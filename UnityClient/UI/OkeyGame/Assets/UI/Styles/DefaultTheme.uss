@@ -1,0 +1,37 @@
+/* Default Theme Styles */
+/* Bu dosya Unity UI Toolkit için temel stilleri tanımlar */
+
+:root {
+    --primary-color: rgb(255, 193, 7);
+    --secondary-color: rgb(76, 175, 80);
+    --background-color: rgb(25, 90, 50);
+    --text-color: rgb(255, 255, 255);
+    --text-muted: rgba(255, 255, 255, 0.7);
+    --error-color: rgb(244, 67, 54);
+    --warning-color: rgb(255, 152, 0);
+}
+
+/* Base styles */
+.unity-base-field__label {
+    color: var(--text-color);
+}
+
+.unity-text-field__input {
+    background-color: rgba(0, 0, 0, 0.3);
+    border-color: rgba(255, 255, 255, 0.3);
+    color: var(--text-color);
+}
+
+.unity-button {
+    background-color: var(--primary-color);
+    color: rgb(33, 33, 33);
+    border-radius: 5px;
+}
+
+.unity-button:hover {
+    background-color: rgb(255, 215, 100);
+}
+
+.unity-button:active {
+    background-color: rgb(200, 150, 0);
+}

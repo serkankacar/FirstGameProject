@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ui:UXML xmlns:ui="UnityEngine.UIElements" xmlns:uie="UnityEditor.UIElements" editor-extension-mode="False">
+    <Style src="project://database/Assets/UI/Styles/MainMenuStyles.uss" />
+    
+    <ui:VisualElement name="main-menu-container" class="main-menu-container">
+        
+        <!-- Player Info Panel (top right when logged in) -->
+        <ui:VisualElement name="player-info-panel" class="player-info-panel" style="display: none;">
+            <ui:VisualElement name="player-avatar" class="player-avatar" />
+            <ui:VisualElement>
+                <ui:Label text="Oyuncu" name="player-name" class="player-name" />
+                <ui:Label text="10,000 Chip" name="player-chips" class="player-chips" />
+                <ui:Label text="ELO: 1200" name="player-elo" class="player-elo" />
+            </ui:VisualElement>
+        </ui:VisualElement>
+        
+        <!-- Logo -->
+        <ui:VisualElement name="logo-container" class="logo-container">
+            <ui:Label text="OKEY" name="logo-text" class="logo-text" />
+            <ui:Label text="Türk Okey Oyunu" name="logo-subtitle" class="logo-subtitle" />
+        </ui:VisualElement>
+        
+        <!-- Menu Buttons -->
+        <ui:VisualElement name="menu-buttons-container" class="menu-buttons-container">
+            <ui:Button text="OYNA" name="play-button" class="menu-button play-button" />
+            <ui:Button text="Misafir Giriş" name="guest-button" class="menu-button guest-button" />
+            <ui:Button text="Giriş / Kayıt" name="login-button" class="menu-button login-button" />
+            <ui:Button text="Ayarlar" name="settings-button" class="menu-button settings-button" />
+        </ui:VisualElement>
+        
+        <!-- Version -->
+        <ui:Label text="v1.0.0 - Demo" name="version-text" class="version-text" />
+        
+        <!-- Loading Overlay -->
+        <ui:VisualElement name="loading-overlay" class="loading-overlay">
+            <ui:VisualElement name="loading-spinner" class="loading-spinner" />
+            <ui:Label text="Bağlanıyor..." name="loading-text" class="loading-text" />
+        </ui:VisualElement>
+        
+        <!-- Error Toast -->
+        <ui:VisualElement name="error-toast" class="error-toast">
+            <ui:Label text="" name="error-text" class="error-text" />
+        </ui:VisualElement>
+        
+    </ui:VisualElement>
+</ui:UXML>

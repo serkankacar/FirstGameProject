@@ -9,44 +9,62 @@ var builder = WebApplication.CreateBuilder(args);
 // SERVISLER
 // ============================================
 
-// Redis bağlantısı
-var redisConnectionString = builder.Configuration.GetConnectionString("Redis") 
-    ?? "localhost:6379";
+// Redis kullanımını kontrol et (development'ta opsiyonel)
+var useRedis = builder.Configuration.GetValue<bool>("UseRedis", false);
+var redisConnectionString = builder.Configuration.GetConnectionString("Redis") ?? "localhost:6379";
 
-builder.Services.AddSingleton<IConnectionMultiplexer>(sp =>
+if (useRedis)
 {
-    var configuration = ConfigurationOptions.Parse(redisConnectionString);
-    configuration.AbortOnConnectFail = false; // Bağlantı hatasında crash olmasın
-    return ConnectionMultiplexer.Connect(configuration);
-});
-
-// Redis Distributed Cache
-builder.Services.AddStackExchangeRedisCache(options =>
-{
-    options.Configuration = redisConnectionString;
-    options.InstanceName = "OkeyGame:";
-});
-
-// SignalR with Redis Backplane (Scale-out için)
-builder.Services.AddSignalR()
-    .AddStackExchangeRedis(redisConnectionString, options =>
+    // Redis bağlantısı
+    builder.Services.AddSingleton<IConnectionMultiplexer>(sp =>
     {
-        options.Configuration.ChannelPrefix = RedisChannel.Literal("OkeyGame");
+        var configuration = ConfigurationOptions.Parse(redisConnectionString);
+        configuration.AbortOnConnectFail = false;
+        return ConnectionMultiplexer.Connect(configuration);
     });
 
+    // Redis Distributed Cache
+    builder.Services.AddStackExchangeRedisCache(options =>
+    {
+        options.Configuration = redisConnectionString;
+        options.InstanceName = "OkeyGame:";
+    });
+
+    // SignalR with Redis Backplane (Scale-out için)
+    builder.Services.AddSignalR()
+        .AddStackExchangeRedis(redisConnectionString, options =>
+        {
+            options.Configuration.ChannelPrefix = RedisChannel.Literal("OkeyGame");
+        });
+    
+    // Redis Game State
+    builder.Services.AddSingleton<IGameStateService, RedisGameStateService>();
+}
+else
+{
+    // In-Memory Cache (development için)
+    builder.Services.AddDistributedMemoryCache();
+    
+    // SignalR without Redis
+    builder.Services.AddSignalR();
+    
+    // In-Memory Game State
+    builder.Services.AddSingleton<IGameStateService, InMemoryGameStateService>();
+}
+
 // Uygulama Servisleri
-builder.Services.AddSingleton<IGameStateService, RedisGameStateService>();
 builder.Services.AddSingleton<ProvablyFairService>();
 builder.Services.AddScoped<IGameService, GameService>();
 
-// CORS (Unity WebGL için gerekli)
+// CORS (Unity için gerekli)
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowAll", policy =>
     {
-        policy.AllowAnyOrigin()
+        policy.SetIsOriginAllowed(_ => true) // Tüm originlere izin ver
               .AllowAnyMethod()
-              .AllowAnyHeader();
+              .AllowAnyHeader()
+              .AllowCredentials(); // SignalR için gerekli
     });
 
     options.AddPolicy("Production", policy =>
@@ -86,11 +104,15 @@ if (app.Environment.IsDevelopment())
 }
 else
 {
+    app.UseHttpsRedirection(); // Sadece production'da HTTPS redirect
     app.UseCors("Production");
 }
 
-app.UseHttpsRedirection();
+// Development'ta HTTPS redirect yok - WebSocket için gerekli
 app.UseRouting();
+
+// WebSockets middleware - SignalR için gerekli
+app.UseWebSockets();
 
 // Authentication & Authorization (ileride eklenecek)
 // app.UseAuthentication();
@@ -106,22 +128,26 @@ app.MapGet("/health", () => Results.Ok(new
 {
     Status = "Healthy",
     Timestamp = DateTime.UtcNow,
-    Version = "1.0.0"
+    Version = "1.0.0",
+    RedisEnabled = useRedis
 }));
 
-// Redis connection check
-app.MapGet("/health/redis", async (IConnectionMultiplexer redis) =>
+// Redis connection check (sadece Redis aktifse)
+if (useRedis)
 {
-    try
+    app.MapGet("/health/redis", async (IConnectionMultiplexer redis) =>
     {
-        var db = redis.GetDatabase();
-        await db.PingAsync();
-        return Results.Ok(new { Status = "Connected", Timestamp = DateTime.UtcNow });
-    }
-    catch (Exception ex)
-    {
-        return Results.Problem($"Redis connection failed: {ex.Message}");
-    }
-});
+        try
+        {
+            var db = redis.GetDatabase();
+            await db.PingAsync();
+            return Results.Ok(new { Status = "Connected", Timestamp = DateTime.UtcNow });
+        }
+        catch (Exception ex)
+        {
+            return Results.Problem($"Redis connection failed: {ex.Message}");
+        }
+    });
+}
 
 app.Run();

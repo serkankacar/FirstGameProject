@@ -15,7 +15,7 @@ namespace OkeyGame.API.Services;
 public interface IGameService
 {
     // Oda İşlemleri
-    Task<GameRoomState> CreateRoomAsync(string roomName, Guid creatorId, string creatorName);
+    Task<GameRoomState> CreateRoomAsync(string roomName, Guid creatorId, string creatorName, long stake = 500);
     Task<(bool Success, string? Error)> JoinRoomAsync(Guid roomId, Guid playerId, string playerName, string connectionId);
     Task<(bool Success, string? Error)> LeaveRoomAsync(Guid roomId, Guid playerId);
     Task<(bool Success, string? Error)> StartGameAsync(Guid roomId);
@@ -76,7 +76,7 @@ public class GameService : IGameService
     /// <summary>
     /// Yeni bir oyun odası oluşturur.
     /// </summary>
-    public async Task<GameRoomState> CreateRoomAsync(string roomName, Guid creatorId, string creatorName)
+    public async Task<GameRoomState> CreateRoomAsync(string roomName, Guid creatorId, string creatorName, long stake = 500)
     {
         var roomId = Guid.NewGuid();
 
@@ -84,6 +84,7 @@ public class GameService : IGameService
         {
             RoomId = roomId,
             RoomName = roomName,
+            Stake = stake,
             State = GameState.WaitingForPlayers,
             CreatedAt = DateTime.UtcNow
         };

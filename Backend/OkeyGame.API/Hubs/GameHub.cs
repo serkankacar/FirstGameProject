@@ -142,19 +142,22 @@ public class GameHub : Hub
     /// Yeni oda oluşturur.
     /// </summary>
     /// <param name="roomName">Oda adı</param>
-    /// <param name="playerName">Oyuncu adı</param>
-    public async Task CreateRoom(string roomName, string playerName)
+    /// <param name="stake">Masa bahis miktarı</param>
+    public async Task CreateRoom(string roomName, long stake)
     {
         var playerId = GetPlayerIdFromContext();
+        var playerName = GetPlayerNameFromContext() ?? "Oyuncu";
+        
+        // Eğer kimlik doğrulama yoksa, demo mod olarak devam et
         if (!playerId.HasValue)
         {
-            await SendError("Kimlik doğrulama gerekli.");
-            return;
+            playerId = Guid.NewGuid();
+            _logger.LogInformation("Demo mod: Yeni oyuncu ID atandı: {PlayerId}", playerId.Value);
         }
 
         try
         {
-            var roomState = await _gameService.CreateRoomAsync(roomName, playerId.Value, playerName);
+            var roomState = await _gameService.CreateRoomAsync(roomName, playerId.Value, playerName, stake);
 
             // Odaya katıl
             await Groups.AddToGroupAsync(Context.ConnectionId, GetRoomGroup(roomState.RoomId));
@@ -163,17 +166,22 @@ public class GameHub : Hub
             await _stateService.SaveConnectionMappingAsync(
                 playerId.Value, roomState.RoomId, Context.ConnectionId);
 
-            // Onay gönder
-            await Clients.Caller.SendAsync("OnRoomCreated", new
+            // Aktif odalara ekle
+            await _stateService.AddToActiveRoomsAsync(roomState.RoomId);
+
+            // Onay gönder - RoomJoined event'i Unity'nin beklediği format
+            await Clients.Caller.SendAsync("RoomJoined", new
             {
-                RoomId = roomState.RoomId,
-                RoomName = roomState.RoomName,
-                Position = PlayerPosition.South,
-                CommitmentHash = roomState.CommitmentHash
+                Id = roomState.RoomId.ToString(),
+                Name = roomState.RoomName,
+                Stake = roomState.Stake,
+                CurrentPlayerCount = roomState.Players.Count,
+                MaxPlayers = 4,
+                IsGameStarted = roomState.IsGameStarted
             });
 
-            _logger.LogInformation("Oda oluşturuldu: {RoomId} tarafından {PlayerId}", 
-                roomState.RoomId, playerId.Value);
+            _logger.LogInformation("Oda oluşturuldu: {RoomId} ({RoomName}) tarafından {PlayerId}, Stake: {Stake}", 
+                roomState.RoomId, roomName, playerId.Value, stake);
         }
         catch (Exception ex)
         {
@@ -185,15 +193,22 @@ public class GameHub : Hub
     /// <summary>
     /// Mevcut bir odaya katılır.
     /// </summary>
-    /// <param name="roomId">Oda ID'si</param>
-    /// <param name="playerName">Oyuncu adı</param>
-    public async Task JoinRoom(Guid roomId, string playerName)
+    /// <param name="roomId">Oda ID'si (string olarak gelir)</param>
+    public async Task JoinRoom(string roomIdStr)
     {
+        if (!Guid.TryParse(roomIdStr, out var roomId))
+        {
+            await SendError("Geçersiz oda ID'si.");
+            return;
+        }
+
         var playerId = GetPlayerIdFromContext();
+        var playerName = GetPlayerNameFromContext() ?? "Oyuncu";
+        
         if (!playerId.HasValue)
         {
-            await SendError("Kimlik doğrulama gerekli.");
-            return;
+            playerId = Guid.NewGuid();
+            _logger.LogInformation("Demo mod: Yeni oyuncu ID atandı: {PlayerId}", playerId.Value);
         }
 
         try
@@ -214,20 +229,15 @@ public class GameHub : Hub
             var roomState = await _gameService.GetRoomStateAsync(roomId);
             var playerState = roomState?.Players.GetValueOrDefault(playerId.Value);
 
-            // Katılana onay gönder
-            await Clients.Caller.SendAsync("OnRoomJoined", new
+            // Katılana onay gönder - RoomJoined event'i
+            await Clients.Caller.SendAsync("RoomJoined", new
             {
-                RoomId = roomId,
-                RoomName = roomState?.RoomName,
-                Position = playerState?.Position,
-                Players = roomState?.Players.Values.Select(p => new
-                {
-                    p.PlayerId,
-                    p.DisplayName,
-                    p.Position,
-                    p.IsConnected
-                }),
-                CommitmentHash = roomState?.CommitmentHash
+                Id = roomId.ToString(),
+                Name = roomState?.RoomName ?? "Oda",
+                Stake = roomState?.Stake ?? 0,
+                CurrentPlayerCount = roomState?.Players.Count ?? 0,
+                MaxPlayers = 4,
+                IsGameStarted = roomState?.IsGameStarted ?? false
             });
 
             // Diğer oyunculara bildir
@@ -505,6 +515,30 @@ public class GameHub : Hub
         if (!string.IsNullOrEmpty(headerPlayerId) && Guid.TryParse(headerPlayerId, out var headerId))
         {
             return headerId;
+        }
+
+        return null;
+    }
+
+    /// <summary>
+    /// Context'ten oyuncu adını alır.
+    /// </summary>
+    private string? GetPlayerNameFromContext()
+    {
+        // JWT Claim'den okumayı dene
+        var nameClaim = Context.User?.FindFirst("name")?.Value 
+            ?? Context.User?.FindFirst("username")?.Value;
+        
+        if (!string.IsNullOrEmpty(nameClaim))
+        {
+            return nameClaim;
+        }
+
+        // Query string'den okumayı dene
+        var queryName = Context.GetHttpContext()?.Request.Query["playerName"].FirstOrDefault();
+        if (!string.IsNullOrEmpty(queryName))
+        {
+            return queryName;
         }
 
         return null;
