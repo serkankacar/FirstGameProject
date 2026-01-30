@@ -64,13 +64,19 @@ namespace OkeyGame.Models
     public class PlayerInfo
     {
         public string Id;
+        public string PlayerId; // Backend alias
         public string Username;
+        public string Name; // Display name alias
+        public string PlayerName; // Another alias
         public string DisplayName;
         public long Chips;
+        public int Elo;
         public int EloScore;
         public string AvatarUrl;
         public bool IsOnline;
         public bool IsReady;
+        public bool IsHost;
+        public bool IsBot;
         
         // Game specific
         public int SeatIndex;
@@ -135,6 +141,9 @@ namespace OkeyGame.Models
         public List<OkeyTile> MyHand;
         public Dictionary<int, int> OpponentTileCounts; // SeatIndex -> TileCount
         
+        // Oyuncu listesi
+        public List<PlayerInfo> Players;
+        
         // Açılan perler (kazanma durumu)
         public Dictionary<int, List<List<OkeyTile>>> RevealedSets; // SeatIndex -> Sets
     }
@@ -177,6 +186,7 @@ namespace OkeyGame.Models
         public string WinnerName;
         public string WinType; // Normal, Pairs, OkeyDiscard, DeckEmpty
         public int WinScore;
+        public bool IsMyWin;
         public List<PlayerGameResult> PlayerResults;
     }
 
@@ -220,5 +230,83 @@ namespace OkeyGame.Models
     {
         public List<RoomInfo> Rooms;
         public int TotalCount;
+    }
+
+    /// <summary>
+    /// Oyun başladığında gelen data
+    /// </summary>
+    [Serializable]
+    public class GameStartedData
+    {
+        public string RoomId;
+        public string Message;
+        public OkeyTile IndicatorTile;
+        public int FirstTurnSeatIndex;
+        public List<OkeyTile> InitialHand;
+        public int DeckCount;
+        public List<PlayerInfo> Players;
+        
+        // Provably Fair
+        public string ServerSeed;
+        public string ServerSeedHash;
+        public string ClientSeed;
+    }
+
+    /// <summary>
+    /// Taş çekildiğinde gelen data (sadece çeken oyuncuya)
+    /// </summary>
+    [Serializable]
+    public class TileDrawnData
+    {
+        public OkeyTile Tile;
+        public bool FromDiscard;
+        public string Timestamp;
+    }
+
+    /// <summary>
+    /// Rakip taş çektiğinde gelen data
+    /// </summary>
+    [Serializable]
+    public class OpponentDrewTileData
+    {
+        public string PlayerId;
+        public bool FromDiscard;
+        public string Timestamp;
+    }
+
+    /// <summary>
+    /// Taş atıldığında gelen data
+    /// </summary>
+    [Serializable]
+    public class TileDiscardedData
+    {
+        public string PlayerId;
+        public int TileId;
+        public TileData Tile;  // Tam taş bilgisi
+        public string NextTurnPlayerId;
+        public int NextTurnPosition;
+        public string Timestamp;
+    }
+
+    /// <summary>
+    /// Backend'den gelen taş bilgisi (OnTileDiscarded için)
+    /// </summary>
+    [Serializable]
+    public class TileData
+    {
+        public int Id;
+        public string Color;
+        public int Number;
+        public bool IsFalseJoker;
+    }
+
+    /// <summary>
+    /// Deste güncelleme datası
+    /// </summary>
+    [Serializable]
+    public class DeckUpdatedData
+    {
+        public int RemainingTileCount;
+        public int DiscardPileCount;
     }
 }

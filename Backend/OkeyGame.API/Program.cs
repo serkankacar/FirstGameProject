@@ -55,6 +55,8 @@ else
 // Uygulama Servisleri
 builder.Services.AddSingleton<ProvablyFairService>();
 builder.Services.AddScoped<IGameService, GameService>();
+builder.Services.AddSingleton<IBotPlayerService, BotPlayerService>();
+builder.Services.AddSingleton<OkeyGame.Application.Services.ITurnTimerService, OkeyGame.Application.Services.TurnTimerService>();
 
 // CORS (Unity için gerekli)
 builder.Services.AddCors(options =>

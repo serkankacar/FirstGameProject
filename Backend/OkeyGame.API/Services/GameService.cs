@@ -233,9 +233,15 @@ public class GameService : IGameService
             return (false, "Oyun zaten başlamış.");
         }
 
+        // En az 1 oyuncu olmalı ve toplam 4 oyuncu (bot dahil) olmalı
+        if (state.Players.Count == 0)
+        {
+            return (false, "Odada oyuncu bulunmuyor.");
+        }
+
         if (state.Players.Count < MaxPlayers)
         {
-            return (false, $"Oyun başlatmak için {MaxPlayers} oyuncu gerekli.");
+            return (false, $"Oyun başlatmak için {MaxPlayers} oyuncu gerekli. Bot eklemek için StartGameWithBots kullanın.");
         }
 
         // Taşları oluştur ve karıştır
@@ -423,6 +429,9 @@ public class GameService : IGameService
             return new DiscardTileResultDto { Success = false, ErrorMessage = "Bu taş elinizde yok." };
         }
 
+        // Atılan taşın bilgisini al
+        var discardedTile = GetTileFromState(state, tileId);
+
         // Taşı elden çıkar ve atık yığınına ekle
         player.HandTileIds.Remove(tileId);
         state.DiscardPileTileIds.Add(tileId);
@@ -448,7 +457,18 @@ public class GameService : IGameService
 
         _logger.LogDebug("Taş atıldı: {PlayerId} -> Tile {TileId}", playerId, tileId);
 
-        return new DiscardTileResultDto { Success = true };
+        return new DiscardTileResultDto 
+        { 
+            Success = true,
+            DiscardedTile = discardedTile != null ? new TileDto
+            {
+                Id = discardedTile.Id,
+                Color = discardedTile.Color,
+                Value = discardedTile.Value,
+                IsOkey = false,
+                IsFalseJoker = discardedTile.IsFalseJoker
+            } : null
+        };
     }
 
     #endregion

@@ -1,10 +1,9 @@
 /* Game Table Screen Styles */
 
-/* Root container - Okey table background */
 .game-table-container {
     flex-grow: 1;
-    background-color: rgb(30, 80, 50);
-    /* background-image: resource('Textures/TableFelt'); - Optional: Add texture later */
+    /* Düz koyu yeşil arka plan - Premium Casino Rengi */
+    background-color: rgb(20, 50, 30);
 }
 
 /* Top bar - Timer and menu */
@@ -82,10 +81,11 @@
     padding: 20px;
 }
 
-/* Opponent areas (top, left, right) */
+/* Opponent areas (top, left, right) - Scale Up */
 .opponent-area {
     position: absolute;
     align-items: center;
+    scale: 1.2; /* %20 daha büyük */
 }
 
 .opponent-area.top {
@@ -107,17 +107,20 @@
 }
 
 .opponent-info {
-    background-color: rgba(0, 0, 0, 0.6);
+    background-color: rgba(20, 20, 20, 0.85);
     padding: 10px 15px;
-    border-radius: 10px;
+    border-radius: 12px;
     align-items: center;
-    min-width: 120px;
+    min-width: 130px;
+    border-width: 1px;
+    border-color: rgba(255, 255, 255, 0.1);
 }
 
 .opponent-name {
-    font-size: 14px;
+    font-size: 16px; /* 14 -> 16 */
     color: white;
     -unity-font-style: bold;
+    margin-bottom: 2px;
 }
 
 .opponent-tiles-count {
@@ -146,11 +149,12 @@
     border-color: rgb(100, 50, 10);
 }
 
-/* Center deck and discard */
+/* Center deck and discard - SCALE UP */
 .center-area {
     flex-direction: row;
     align-items: center;
     justify-content: center;
+    scale: 1.3; /* Alanı %30 büyüt */
 }
 
 /* Indicator tile */
@@ -166,8 +170,9 @@
 }
 
 .indicator-tile {
-    width: 40px;
-    height: 55px;
+    width: 50px;
+    height: 70px;
+    background-color: rgb(240, 235, 220);
     border-radius: 5px;
     align-items: center;
     justify-content: center;
@@ -227,7 +232,7 @@
 .discard-pile {
     width: 50px;
     height: 70px;
-    background-color: rgba(0, 0, 0, 0.3);
+    background-color: rgb(240, 235, 220);
     border-radius: 5px;
     border-width: 2px;
     border-color: rgb(100, 100, 100);
@@ -245,13 +250,21 @@
 }
 
 /* Player hand area (bottom) */
+/* Player hand area (bottom) */
 .player-hand-area {
     position: absolute;
     bottom: 0;
     left: 0;
     right: 0;
-    background-color: rgba(0, 0, 0, 0.7);
-    padding: 15px 20px 20px 20px;
+    /* Wooden Rack Color */
+    background-color: rgb(80, 50, 25);
+    
+    border-top-width: 6px;
+    border-top-color: rgb(40, 20, 10);
+    padding: 15px 20px 25px 20px;
+    
+    /* İnce bir gölge efekti (border ile simüle edilmiş) */
+    border-bottom-width: 0;
 }
 
 .player-info-bar {
@@ -283,6 +296,15 @@
     -unity-font-style: bold;
 }
 
+.action-button.sort {
+    background-color: rgb(80, 120, 180);
+    color: white;
+}
+
+.action-button.sort:hover {
+    background-color: rgb(100, 140, 200);
+}
+
 .action-button.discard {
     background-color: rgb(220, 80, 80);
     color: white;
@@ -304,55 +326,108 @@
     flex-wrap: wrap;
 }
 
-/* Individual tile */
+/* Individual tile - Unified definition */
 .tile {
-    width: 45px;
-    height: 65px;
-    background-color: rgb(255, 250, 240);
-    border-radius: 5px;
+    width: 60px;
+    height: 85px;
+    
+    /* Ivory Color */
+    background-color: rgb(250, 245, 235);
+    
+    border-radius: 6px;
+    /* Hafif border ile 3D efekt */
     border-width: 2px;
-    border-color: rgb(180, 170, 160);
-    margin: 3px;
+    border-top-color: rgb(255, 255, 255);
+    border-left-color: rgb(220, 215, 200);
+    border-right-color: rgb(180, 175, 160);
+    border-bottom-color: rgb(150, 145, 130);
+    
+    margin: 4px;
     align-items: center;
     justify-content: center;
     transition-duration: 0.1s;
 }
 
 .tile:hover {
-    translate: 0 -10px;
-    border-color: rgb(100, 200, 255);
+    translate: 0 -8px;
+    border-bottom-width: 8px; /* Enhance 3D feel on lift */
+    border-bottom-color: rgba(0, 0, 0, 0.4);
+    background-color: rgb(255, 255, 255);
 }
 
 .tile.selected {
-    translate: 0 -15px;
-    border-color: rgb(255, 215, 0);
+    translate: 0 -12px;
+    border-bottom-width: 8px;
+    border-color: rgb(255, 215, 0); /* Gold outline */
     border-width: 3px;
+    border-bottom-color: rgb(200, 160, 0); /* Darker gold for bottom 3D part */
+    scale: 1.1;
 }
 
 .tile.just-drawn {
     border-color: rgb(100, 255, 100);
     border-width: 3px;
+    translate: 0 -15px;
+    scale: 1.1;
 }
 
 .tile.okey {
-    background-color: rgb(255, 245, 220);
-    border-color: rgb(255, 215, 0);
-    border-width: 2px;
+    background-color: rgb(255, 250, 230);
+    border-color: rgb(255, 200, 50);
+    border-width: 3px;
 }
 
 .tile-number {
-    font-size: 24px;
+    font-size: 36px; /* Font Büyütüldü */
     -unity-font-style: bold;
+    margin-bottom: 0;
+    /* Sayıyı biraz yukarı al texture ortasına */
+    translate: 0 -5px; 
 }
-
-.tile-number.yellow { color: rgb(200, 150, 0); }
-.tile-number.blue { color: rgb(30, 100, 180); }
-.tile-number.black { color: rgb(30, 30, 30); }
-.tile-number.red { color: rgb(180, 30, 30); }
+/* Canlı ve Okunabilir Renkler */
+.tile-number.yellow { color: rgb(220, 160, 0); } /* Hardal Sarısı - Beyaz zemin üstüne daha iyi okunur */
+.tile-number.blue { color: rgb(0, 90, 180); } /* Derin Mavi */
+.tile-number.black { color: rgb(20, 20, 20); } /* Tam Siyah değil, Yumuşak Siyah */
+.tile-number.red { color: rgb(200, 30, 30); } /* Canlı Kırmızı */
 
 .tile-joker-label {
     font-size: 10px;
     color: rgb(150, 150, 150);
+}
+
+/* Okey taşı badge - köşede yıldız */
+.okey-badge {
+    position: absolute;
+    top: 2px;
+    right: 2px;
+    font-size: 14px;
+    color: rgb(255, 215, 0);
+    -unity-font-style: bold;
+    text-shadow: 0 0 3px rgb(255, 180, 0);
+}
+
+/* Okey taşı - özel görünüm */
+.tile.okey {
+    background-color: rgb(255, 250, 230);
+    border-color: rgb(255, 200, 50);
+    border-width: 3px;
+}
+
+.tile.okey::after {
+    background-color: rgb(255, 215, 0);
+}
+
+/* Sahte Joker numarası */
+.tile-number.false-joker {
+    color: rgb(160, 50, 160);
+    font-size: 32px;
+}
+
+/* Sürükleme durumu */
+.tile.dragging {
+    opacity: 0.6;
+    scale: 1.15;
+    rotate: 5deg;
 }
 
 /* Separator between tile groups */
@@ -430,4 +505,54 @@
     font-size: 18px;
     color: white;
     -unity-font-style: bold;
+}
+
+/* ====== BOT/RAKİP HAMLELERİ İÇİN ANİMASYON STİLLERİ ====== */
+
+/* Rakip paneli - taş atma efekti */
+.opponent-info.discarding {
+    border-width: 3px;
+    border-color: rgb(255, 100, 100);
+    background-color: rgba(255, 50, 50, 0.3);
+    scale: 1.05;
+}
+
+/* Rakip paneli - taş çekme efekti */
+.opponent-info.drawing {
+    border-width: 3px;
+    border-color: rgb(100, 200, 255);
+    background-color: rgba(50, 150, 255, 0.3);
+    scale: 1.05;
+}
+
+/* Atık yığını - yeni taş geldi efekti */
+.discard-pile.new-tile {
+    scale: 1.15;
+    border-color: rgb(255, 215, 0);
+    border-width: 3px;
+}
+
+/* Sıra kendinde olan rakip - pulse efekti */
+.opponent-info.current-turn {
+    border-width: 3px;
+    border-color: rgb(255, 215, 0);
+    background-color: rgba(255, 215, 0, 0.15);
+}
+
+/* Deste/Atık - çekilebilir durumu */
+.deck-pile.can-draw,
+.discard-pile.can-draw {
+    border-color: rgb(100, 255, 100);
+    border-width: 2px;
+}
+
+/* Aktif oyuncu göstergesi */
+.player-turn-indicator {
+    position: absolute;
+    width: 12px;
+    height: 12px;
+    background-color: rgb(255, 215, 0);
+    border-radius: 6px;
+    top: -6px;
+    right: -6px;
 }

@@ -240,6 +240,11 @@ public class DiscardTileResultDto
     public string? ErrorMessage { get; init; }
 
     /// <summary>
+    /// Atılan taş bilgisi.
+    /// </summary>
+    public TileDto? DiscardedTile { get; init; }
+
+    /// <summary>
     /// Güncellenmiş oyun durumu.
     /// </summary>
     public GameStateDto? UpdatedState { get; init; }

@@ -1,6 +1,10 @@
 using UnityEngine;
 using UnityEngine.UIElements;
 using OkeyGame.Core;
+using OkeyGame.Models;
+using OkeyGame.Game;
+
+using GameState = OkeyGame.Core.GameState;
 
 namespace OkeyGame.UI
 {
@@ -14,11 +18,13 @@ namespace OkeyGame.UI
         [Header("UI Documents")]
         [SerializeField] private UIDocument _mainMenuDocument;
         [SerializeField] private UIDocument _lobbyDocument;
+        [SerializeField] private UIDocument _waitingRoomDocument;
         [SerializeField] private UIDocument _gameTableDocument;
 
         [Header("Screen Controllers")]
         [SerializeField] private MainMenuScreen _mainMenuScreen;
         [SerializeField] private LobbyScreen _lobbyScreen;
+        [SerializeField] private WaitingRoomScreen _waitingRoomScreen;
         [SerializeField] private GameTableScreen _gameTableScreen;
 
         private void Awake()
@@ -56,6 +62,16 @@ namespace OkeyGame.UI
                 }
             }
             
+            if (_waitingRoomDocument == null)
+            {
+                var waitingRoomGO = GameObject.Find("WaitingRoomUI");
+                if (waitingRoomGO != null)
+                {
+                    _waitingRoomDocument = waitingRoomGO.GetComponent<UIDocument>();
+                    _waitingRoomScreen = waitingRoomGO.GetComponent<WaitingRoomScreen>();
+                }
+            }
+            
             if (_gameTableDocument == null)
             {
                 var gameTableGO = GameObject.Find("GameTableUI");
@@ -66,7 +82,7 @@ namespace OkeyGame.UI
                 }
             }
             
-            Debug.Log($"[SceneController] Auto-found UI Documents - MainMenu: {_mainMenuDocument != null}, Lobby: {_lobbyDocument != null}, GameTable: {_gameTableDocument != null}");
+            Debug.Log($"[SceneController] Auto-found UI Documents - MainMenu: {_mainMenuDocument != null}, Lobby: {_lobbyDocument != null}, WaitingRoom: {_waitingRoomDocument != null}, GameTable: {_gameTableDocument != null}");
         }
 
         private void OnEnable()
@@ -95,8 +111,11 @@ namespace OkeyGame.UI
                     break;
 
                 case GameState.Lobby:
-                case GameState.InRoom:
                     ShowLobby();
+                    break;
+
+                case GameState.InRoom:
+                    ShowWaitingRoom();
                     break;
 
                 case GameState.Playing:
@@ -113,6 +132,7 @@ namespace OkeyGame.UI
         {
             SetScreenActive(_mainMenuDocument, _mainMenuScreen, true);
             SetScreenActive(_lobbyDocument, _lobbyScreen, false);
+            SetScreenActive(_waitingRoomDocument, _waitingRoomScreen, false);
             SetScreenActive(_gameTableDocument, _gameTableScreen, false);
         }
 
@@ -120,13 +140,48 @@ namespace OkeyGame.UI
         {
             SetScreenActive(_mainMenuDocument, _mainMenuScreen, false);
             SetScreenActive(_lobbyDocument, _lobbyScreen, true);
+            SetScreenActive(_waitingRoomDocument, _waitingRoomScreen, false);
             SetScreenActive(_gameTableDocument, _gameTableScreen, false);
+        }
+
+        public void ShowWaitingRoom()
+        {
+            // WaitingRoom bulunamadıysa direkt GameTable'a geç
+            if (_waitingRoomDocument == null || _waitingRoomScreen == null)
+            {
+                Debug.LogWarning("[SceneController] WaitingRoomUI not found! Backend connection required.");
+                ShowGameTable();
+                return;
+            }
+
+            SetScreenActive(_mainMenuDocument, _mainMenuScreen, false);
+            SetScreenActive(_lobbyDocument, _lobbyScreen, false);
+            SetScreenActive(_waitingRoomDocument, _waitingRoomScreen, true);
+            SetScreenActive(_gameTableDocument, _gameTableScreen, false);
+        }
+
+        /// <summary>
+        /// Bekleme odasına oda bilgisiyle geçiş yap
+        /// </summary>
+        public void ShowWaitingRoom(RoomInfo room, bool isHost)
+        {
+            // WaitingRoom bulunamadıysa direkt GameTable'a geç
+            if (_waitingRoomDocument == null || _waitingRoomScreen == null)
+            {
+                Debug.LogWarning("[SceneController] WaitingRoomUI not found! Backend connection required.");
+                ShowGameTable();
+                return;
+            }
+            
+            ShowWaitingRoom();
+            _waitingRoomScreen?.SetRoom(room, isHost);
         }
 
         public void ShowGameTable()
         {
             SetScreenActive(_mainMenuDocument, _mainMenuScreen, false);
             SetScreenActive(_lobbyDocument, _lobbyScreen, false);
+            SetScreenActive(_waitingRoomDocument, _waitingRoomScreen, false);
             SetScreenActive(_gameTableDocument, _gameTableScreen, true);
         }
 

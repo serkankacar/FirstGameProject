@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ui:UXML xmlns:ui="UnityEngine.UIElements" xmlns:uie="UnityEditor.UIElements" editor-extension-mode="False">
+    
+    <Style src="../Styles/WaitingRoomStyles.uss" />
+    
+    <!-- Main Container -->
+    <ui:VisualElement name="waiting-room-container" class="waiting-room-container">
+        
+        <!-- Header -->
+        <ui:VisualElement name="header" class="header">
+            <ui:VisualElement name="room-info" class="room-info">
+                <ui:Label name="room-name-label" text="Oda Adı" class="room-name" />
+                <ui:Label name="stake-label" text="500 Chip" class="stake-label" />
+            </ui:VisualElement>
+        </ui:VisualElement>
+        
+        <!-- Players Grid - 2x2 layout for 4 players -->
+        <ui:VisualElement name="players-section" class="players-section">
+            <ui:Label text="Oyuncular" class="section-title" />
+            <ui:VisualElement name="players-container" class="players-container">
+                <!-- Players will be dynamically added here -->
+            </ui:VisualElement>
+        </ui:VisualElement>
+        
+        <!-- Status Section -->
+        <ui:VisualElement name="status-section" class="status-section">
+            <ui:Label name="status-label" text="Oyun başlaması için 3 oyuncu daha gerekli" class="status-label" />
+        </ui:VisualElement>
+        
+        <!-- Action Buttons -->
+        <ui:VisualElement name="actions-section" class="actions-section">
+            <ui:Button name="start-game-button" text="Oyunu Başlat" class="action-button primary-button" />
+            <ui:Button name="start-with-bots-button" text="Botlarla Başlat" class="action-button secondary-button" />
+            <ui:Button name="leave-room-button" text="Odadan Ayrıl" class="action-button danger-button" />
+        </ui:VisualElement>
+        
+        <!-- Loading Overlay -->
+        <ui:VisualElement name="loading-overlay" class="loading-overlay" style="display: none;">
+            <ui:VisualElement class="loading-content">
+                <ui:Label name="loading-message" text="Yükleniyor..." class="loading-message" />
+                <ui:VisualElement class="loading-spinner" />
+            </ui:VisualElement>
+        </ui:VisualElement>
+        
+    </ui:VisualElement>
+    
+</ui:UXML>

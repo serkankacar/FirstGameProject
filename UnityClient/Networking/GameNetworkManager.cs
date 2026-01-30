@@ -440,6 +440,7 @@ namespace OkeyGame.Unity.Networking
 
         /// <summary>
         /// Oyunu başlatır.
+        /// Eksik oyuncu varsa otomatik olarak bot eklenir.
         /// </summary>
         public async Task StartGameAsync()
         {
@@ -449,6 +450,20 @@ namespace OkeyGame.Unity.Networking
             Debug.Log($"[GameNetwork] Oyun başlatılıyor: {CurrentRoomId}");
             
             await _connection.InvokeAsync<string>("StartGame", CurrentRoomId.Value.ToString());
+        }
+
+        /// <summary>
+        /// Oyunu belirli zorluk seviyesinde botlarla başlatır.
+        /// </summary>
+        /// <param name="difficulty">Bot zorluk seviyesi (0=Easy, 1=Normal, 2=Hard, 3=Expert)</param>
+        public async Task StartGameWithBotsAsync(int difficulty = 1)
+        {
+            if (!CurrentRoomId.HasValue) return;
+            
+            EnsureConnected();
+            Debug.Log($"[GameNetwork] Oyun botlarla başlatılıyor: {CurrentRoomId}, Zorluk: {difficulty}");
+            
+            await _connection.InvokeAsync("StartGameWithBots", CurrentRoomId.Value.ToString(), difficulty);
         }
 
         #endregion
@@ -608,15 +623,229 @@ namespace OkeyGame.Unity.Networking
             {
                 var data = new GameStartedData();
                 
-                var idMatch = Regex.Match(json, "\"RoomId\":\"([^\"]+)\"");
+                // RoomId parse
+                var idMatch = Regex.Match(json, "\"[Rr]oomId\":\"([^\"]+)\"");
                 if (idMatch.Success && Guid.TryParse(idMatch.Groups[1].Value, out var roomId))
                     data.RoomId = roomId;
+                
+                // ServerSeedHash parse
+                var hashMatch = Regex.Match(json, "\"[Ss]erverSeedHash\":\"([^\"]+)\"");
+                if (hashMatch.Success)
+                    data.ServerSeedHash = hashMatch.Groups[1].Value;
+                
+                // InitialState parse - nested object
+                data.InitialState = ParseGameStateData(json);
                 
                 return data;
             }
             catch (Exception ex)
             {
                 Debug.LogError($"[GameNetwork] GameStartedData parse error: {ex.Message}");
+                return null;
+            }
+        }
+
+        private GameStateData ParseGameStateData(string json)
+        {
+            try
+            {
+                var state = new GameStateData();
+                
+                // CurrentTurnPosition
+                var turnPosMatch = Regex.Match(json, "\"[Cc]urrentTurnPosition\":(\\d+)");
+                if (turnPosMatch.Success)
+                    state.CurrentTurnPosition = int.Parse(turnPosMatch.Groups[1].Value);
+                
+                // RemainingTileCount
+                var remainingMatch = Regex.Match(json, "\"[Rr]emainingTileCount\":(\\d+)");
+                if (remainingMatch.Success)
+                    state.RemainingTileCount = int.Parse(remainingMatch.Groups[1].Value);
+                
+                // State
+                var stateMatch = Regex.Match(json, "\"[Ss]tate\":(\\d+)");
+                if (stateMatch.Success)
+                    state.State = int.Parse(stateMatch.Groups[1].Value);
+                
+                // Self player data
+                state.Self = ParseSelfPlayerData(json);
+                
+                // Opponents
+                state.Opponents = ParseOpponentsData(json);
+                
+                // IndicatorTile
+                state.IndicatorTile = ParseIndicatorTile(json);
+                
+                return state;
+            }
+            catch (Exception ex)
+            {
+                Debug.LogError($"[GameNetwork] GameStateData parse error: {ex.Message}");
+                return new GameStateData();
+            }
+        }
+
+        private PlayerData ParseSelfPlayerData(string json)
+        {
+            try
+            {
+                var player = new PlayerData();
+                player.Hand = new List<TileData>();
+                
+                // Self object'i bul
+                var selfMatch = Regex.Match(json, "\"[Ss]elf\":\\s*\\{([^}]+(?:\\{[^}]*\\}[^}]*)*)\\}");
+                if (!selfMatch.Success)
+                    return player;
+                
+                var selfJson = selfMatch.Groups[1].Value;
+                
+                // Id
+                var idMatch = Regex.Match(selfJson, "\"[Ii]d\":\"([^\"]+)\"");
+                if (idMatch.Success && Guid.TryParse(idMatch.Groups[1].Value, out var id))
+                    player.Id = id;
+                
+                // DisplayName
+                var nameMatch = Regex.Match(selfJson, "\"[Dd]isplayName\":\"([^\"]+)\"");
+                if (nameMatch.Success)
+                    player.DisplayName = nameMatch.Groups[1].Value;
+                
+                // Position
+                var posMatch = Regex.Match(selfJson, "\"[Pp]osition\":(\\d+)");
+                if (posMatch.Success)
+                    player.Position = int.Parse(posMatch.Groups[1].Value);
+                
+                // IsCurrentTurn
+                var turnMatch = Regex.Match(selfJson, "\"[Ii]sCurrentTurn\":(true|false)");
+                if (turnMatch.Success)
+                    player.IsCurrentTurn = turnMatch.Groups[1].Value == "true";
+                
+                // IsConnected
+                var connMatch = Regex.Match(selfJson, "\"[Ii]sConnected\":(true|false)");
+                if (connMatch.Success)
+                    player.IsConnected = connMatch.Groups[1].Value == "true";
+                
+                // Hand tiles - array parsing
+                var handMatch = Regex.Match(json, "\"[Hh]and\":\\s*\\[([^\\]]*)\\]");
+                if (handMatch.Success)
+                {
+                    var tilesJson = handMatch.Groups[1].Value;
+                    var tileMatches = Regex.Matches(tilesJson, "\\{([^}]+)\\}");
+                    
+                    foreach (Match tileMatch in tileMatches)
+                    {
+                        var tile = ParseSingleTile(tileMatch.Groups[1].Value);
+                        if (tile != null)
+                            player.Hand.Add(tile);
+                    }
+                }
+                
+                return player;
+            }
+            catch (Exception ex)
+            {
+                Debug.LogError($"[GameNetwork] ParseSelfPlayerData error: {ex.Message}");
+                return new PlayerData { Hand = new List<TileData>() };
+            }
+        }
+
+        private List<OpponentData> ParseOpponentsData(string json)
+        {
+            var opponents = new List<OpponentData>();
+            
+            try
+            {
+                var opponentsMatch = Regex.Match(json, "\"[Oo]pponents\":\\s*\\[([^\\]]+)\\]");
+                if (!opponentsMatch.Success)
+                    return opponents;
+                
+                var opponentsJson = opponentsMatch.Groups[1].Value;
+                var oppMatches = Regex.Matches(opponentsJson, "\\{([^}]+)\\}");
+                
+                foreach (Match oppMatch in oppMatches)
+                {
+                    var opp = new OpponentData();
+                    var oppJson = oppMatch.Groups[1].Value;
+                    
+                    var idMatch = Regex.Match(oppJson, "\"[Ii]d\":\"([^\"]+)\"");
+                    if (idMatch.Success && Guid.TryParse(idMatch.Groups[1].Value, out var id))
+                        opp.Id = id;
+                    
+                    var nameMatch = Regex.Match(oppJson, "\"[Dd]isplayName\":\"([^\"]+)\"");
+                    if (nameMatch.Success)
+                        opp.DisplayName = nameMatch.Groups[1].Value;
+                    
+                    var posMatch = Regex.Match(oppJson, "\"[Pp]osition\":(\\d+)");
+                    if (posMatch.Success)
+                        opp.Position = int.Parse(posMatch.Groups[1].Value);
+                    
+                    var countMatch = Regex.Match(oppJson, "\"[Tt]ileCount\":(\\d+)");
+                    if (countMatch.Success)
+                        opp.TileCount = int.Parse(countMatch.Groups[1].Value);
+                    
+                    var turnMatch = Regex.Match(oppJson, "\"[Ii]sCurrentTurn\":(true|false)");
+                    if (turnMatch.Success)
+                        opp.IsCurrentTurn = turnMatch.Groups[1].Value == "true";
+                    
+                    var connMatch = Regex.Match(oppJson, "\"[Ii]sConnected\":(true|false)");
+                    if (connMatch.Success)
+                        opp.IsConnected = connMatch.Groups[1].Value == "true";
+                    
+                    opponents.Add(opp);
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.LogError($"[GameNetwork] ParseOpponentsData error: {ex.Message}");
+            }
+            
+            return opponents;
+        }
+
+        private TileData ParseIndicatorTile(string json)
+        {
+            try
+            {
+                var indicatorMatch = Regex.Match(json, "\"[Ii]ndicatorTile\":\\s*\\{([^}]+)\\}");
+                if (!indicatorMatch.Success)
+                    return null;
+                
+                return ParseSingleTile(indicatorMatch.Groups[1].Value);
+            }
+            catch
+            {
+                return null;
+            }
+        }
+
+        private TileData ParseSingleTile(string tileJson)
+        {
+            try
+            {
+                var tile = new TileData();
+                
+                var idMatch = Regex.Match(tileJson, "\"[Ii]d\":(\\d+)");
+                if (idMatch.Success)
+                    tile.Id = int.Parse(idMatch.Groups[1].Value);
+                
+                var colorMatch = Regex.Match(tileJson, "\"[Cc]olor\":(\\d+)");
+                if (colorMatch.Success)
+                    tile.Color = int.Parse(colorMatch.Groups[1].Value);
+                
+                var valueMatch = Regex.Match(tileJson, "\"[Vv]alue\":(\\d+)");
+                if (valueMatch.Success)
+                    tile.Value = int.Parse(valueMatch.Groups[1].Value);
+                
+                var okeyMatch = Regex.Match(tileJson, "\"[Ii]sOkey\":(true|false)");
+                if (okeyMatch.Success)
+                    tile.IsOkey = okeyMatch.Groups[1].Value == "true";
+                
+                var falseJokerMatch = Regex.Match(tileJson, "\"[Ii]sFalseJoker\":(true|false)");
+                if (falseJokerMatch.Success)
+                    tile.IsFalseJoker = falseJokerMatch.Groups[1].Value == "true";
+                
+                return tile;
+            }
+            catch
+            {
                 return null;
             }
         }
@@ -668,6 +897,16 @@ namespace OkeyGame.Unity.Networking
                 if (tileIdMatch.Success)
                     data.TileId = int.Parse(tileIdMatch.Groups[1].Value);
                 
+                // NextTurnPlayerId
+                var nextPlayerMatch = Regex.Match(json, "\"NextTurnPlayerId\":\"([^\"]+)\"");
+                if (nextPlayerMatch.Success && Guid.TryParse(nextPlayerMatch.Groups[1].Value, out var nextPlayerId))
+                    data.NextTurnPlayerId = nextPlayerId;
+                
+                // NextTurnPosition
+                var nextPosMatch = Regex.Match(json, "\"NextTurnPosition\":(\\d+)");
+                if (nextPosMatch.Success)
+                    data.NextTurnPosition = int.Parse(nextPosMatch.Groups[1].Value);
+                
                 return data;
             }
             catch (Exception ex)
@@ -690,6 +929,11 @@ namespace OkeyGame.Unity.Networking
                 var fromDiscardMatch = Regex.Match(json, "\"FromDiscard\":(true|false)");
                 if (fromDiscardMatch.Success)
                     data.FromDiscard = fromDiscardMatch.Groups[1].Value == "true";
+                
+                // IsBot flag
+                var isBotMatch = Regex.Match(json, "\"IsBot\":(true|false)");
+                if (isBotMatch.Success)
+                    data.IsBot = isBotMatch.Groups[1].Value == "true";
                 
                 return data;
             }
@@ -848,6 +1092,7 @@ namespace OkeyGame.Unity.Networking
         public int TileCount;
         public bool IsCurrentTurn;
         public bool IsConnected;
+        public bool IsBot;
     }
 
     [Serializable]
@@ -873,6 +1118,7 @@ namespace OkeyGame.Unity.Networking
     {
         public Guid PlayerId;
         public bool FromDiscard;
+        public bool IsBot;
         public string Timestamp;
     }
 
@@ -883,6 +1129,7 @@ namespace OkeyGame.Unity.Networking
         public int TileId;
         public Guid NextTurnPlayerId;
         public int NextTurnPosition;
+        public bool IsBot;
         public string Timestamp;
     }
 

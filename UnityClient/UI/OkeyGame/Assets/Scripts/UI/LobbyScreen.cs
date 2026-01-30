@@ -41,15 +41,60 @@ namespace OkeyGame.UI
 
         private long _selectedStake = 500;
         private List<RoomInfo> _rooms = new();
+        private RoomInfo _pendingRoom; // Oda oluşturma/katılma için geçici referans
+        private bool _isCreatingRoom;
 
         private void OnEnable()
         {
             _root = _uiDocument.rootVisualElement;
             InitializeUIReferences();
             RegisterCallbacks();
+            RegisterNetworkEvents();
             
             // Load rooms
             RefreshRooms();
+        }
+
+        private void OnDisable()
+        {
+            UnregisterNetworkEvents();
+        }
+
+        private void RegisterNetworkEvents()
+        {
+            if (SignalRConnection.Instance != null)
+            {
+                SignalRConnection.Instance.OnRoomJoined += HandleRoomJoined;
+            }
+        }
+
+        private void UnregisterNetworkEvents()
+        {
+            if (SignalRConnection.Instance != null)
+            {
+                SignalRConnection.Instance.OnRoomJoined -= HandleRoomJoined;
+            }
+        }
+
+        private void HandleRoomJoined(RoomInfo room)
+        {
+            Debug.Log($"[Lobby] Received RoomJoined event: {room.Name ?? room.RoomName}");
+            
+            // Update room info if we have pending info
+            if (_pendingRoom != null)
+            {
+                // Merge data
+                room.Name = room.Name ?? _pendingRoom.Name ?? _pendingRoom.RoomName;
+                room.Stake = room.Stake > 0 ? room.Stake : _pendingRoom.Stake;
+            }
+            
+            bool isHost = _isCreatingRoom;
+            _isCreatingRoom = false;
+            _pendingRoom = null;
+            
+            // Navigate to waiting room
+            GameManager.Instance.JoinRoom(room.Id ?? room.RoomId ?? System.Guid.NewGuid().ToString(), 0);
+            SceneController.Instance.ShowWaitingRoom(room, isHost);
         }
 
         private void InitializeUIReferences()
@@ -113,17 +158,45 @@ namespace OkeyGame.UI
 
         private async void RefreshRooms()
         {
-            var response = await ApiService.Instance.GetRoomsAsync();
+            // Demo modda veya API yoksa demo odalar göster
+            if (ApiService.Instance == null)
+            {
+                Debug.Log("[Lobby] Demo mode - showing demo rooms");
+                LoadDemoRooms();
+                return;
+            }
             
-            if (response.Success && response.Data != null)
+            try
             {
-                _rooms = response.Data.Rooms ?? new List<RoomInfo>();
-                UpdateRoomList();
+                var response = await ApiService.Instance.GetRoomsAsync();
+            
+                if (response.Success && response.Data != null)
+                {
+                    _rooms = response.Data.Rooms ?? new List<RoomInfo>();
+                    UpdateRoomList();
+                }
+                else
+                {
+                    Debug.LogWarning($"[Lobby] Failed to get rooms: {response.Error}, showing demo rooms");
+                    LoadDemoRooms();
+                }
             }
-            else
+            catch (System.Exception ex)
             {
-                Debug.LogError($"[Lobby] Failed to get rooms: {response.Error}");
+                Debug.LogWarning($"[Lobby] Error getting rooms: {ex.Message}, showing demo rooms");
+                LoadDemoRooms();
             }
+        }
+
+        private void LoadDemoRooms()
+        {
+            _rooms = new List<RoomInfo>
+            {
+                new RoomInfo { Id = "demo-1", Name = "Demo Oda 1", Stake = 500, CurrentPlayerCount = 2, MaxPlayers = 4 },
+                new RoomInfo { Id = "demo-2", Name = "Yüksek Bahis", Stake = 5000, CurrentPlayerCount = 1, MaxPlayers = 4 },
+                new RoomInfo { Id = "demo-3", Name = "Yeni Başlayanlar", Stake = 100, CurrentPlayerCount = 3, MaxPlayers = 4 }
+            };
+            UpdateRoomList();
         }
 
         private void UpdateRoomList()
@@ -247,17 +320,29 @@ namespace OkeyGame.UI
         {
             Debug.Log($"[Lobby] Joining room: {room.Name}");
 
+            // Demo mod kontrolü
+            if (SignalRConnection.Instance == null || !SignalRConnection.Instance.IsConnected)
+            {
+                Debug.Log("[Lobby] Demo mode - directly navigating to waiting room");
+                GameManager.Instance.JoinRoom(room.Id ?? System.Guid.NewGuid().ToString(), 0);
+                SceneController.Instance.ShowWaitingRoom(room, isHost: false);
+                return;
+            }
+
+            // Set pending state for HandleRoomJoined callback
+            _isCreatingRoom = false;
+            _pendingRoom = room;
+
             var success = await SignalRConnection.Instance.JoinRoom(room.Id);
 
-            if (success)
+            if (!success)
             {
-                GameManager.Instance.ChangeState(GameState.InRoom);
-                // TODO: Navigate to waiting room or game
+                _pendingRoom = null;
+                Debug.LogWarning("[Lobby] SignalR join failed, using demo mode");
+                GameManager.Instance.JoinRoom(room.Id ?? System.Guid.NewGuid().ToString(), 0);
+                SceneController.Instance.ShowWaitingRoom(room, isHost: false);
             }
-            else
-            {
-                Debug.LogError("[Lobby] Failed to join room");
-            }
+            // Success case is handled by HandleRoomJoined callback
         }
 
         private void OnCreateRoomClicked()
@@ -301,30 +386,45 @@ namespace OkeyGame.UI
 
             Debug.Log($"[Lobby] Creating room: {roomName}, stake: {_selectedStake}");
 
-            // SignalR bağlı mı kontrol et
+            // Create room info
+            var newRoom = new RoomInfo
+            {
+                Id = System.Guid.NewGuid().ToString(),
+                Name = roomName,
+                RoomName = roomName,
+                Stake = _selectedStake,
+                CurrentPlayerCount = 1,
+                MaxPlayers = 4,
+                IsGameStarted = false
+            };
+
+            // Demo mod kontrolü - SignalR bağlı değilse direkt geçiş yap
             if (SignalRConnection.Instance == null || !SignalRConnection.Instance.IsConnected)
             {
-                Debug.LogWarning("[Lobby] SignalR not connected, trying to connect...");
-                var hubUrl = GameSettings.Instance?.SignalRHubUrl ?? "http://localhost:57392/gamehub";
-                var connected = await SignalRConnection.Instance.ConnectAsync(hubUrl, null);
-                if (!connected)
-                {
-                    Debug.LogError("[Lobby] Failed to connect to SignalR");
-                    return;
-                }
+                Debug.Log("[Lobby] Demo mode - directly navigating to waiting room");
+                GameManager.Instance.JoinRoom(newRoom.Id, 0);
+                SceneController.Instance.ShowWaitingRoom(newRoom, isHost: true);
+                return;
             }
+
+            // SignalR bağlı mı kontrol et
+            Debug.Log("[Lobby] SignalR connected, creating room via server...");
+
+            // Set pending state for HandleRoomJoined callback
+            _isCreatingRoom = true;
+            _pendingRoom = newRoom;
 
             var success = await SignalRConnection.Instance.CreateRoom(roomName, _selectedStake);
 
-            if (success)
+            if (!success)
             {
-                Debug.Log("[Lobby] Room created successfully!");
-                GameManager.Instance.ChangeState(GameState.InRoom);
+                _isCreatingRoom = false;
+                _pendingRoom = null;
+                Debug.LogWarning("[Lobby] SignalR create failed, using demo mode");
+                GameManager.Instance.JoinRoom(newRoom.Id, 0);
+                SceneController.Instance.ShowWaitingRoom(newRoom, isHost: true);
             }
-            else
-            {
-                Debug.LogError("[Lobby] Failed to create room");
-            }
+            // Success case is handled by HandleRoomJoined callback
         }
 
         private void OnBackClicked()

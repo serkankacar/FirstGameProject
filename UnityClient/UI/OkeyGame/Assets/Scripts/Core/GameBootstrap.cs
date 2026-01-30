@@ -1,6 +1,7 @@
 using UnityEngine;
 using OkeyGame.Network;
 using OkeyGame.Game;
+using System.Threading.Tasks;
 
 namespace OkeyGame.Core
 {
@@ -17,6 +18,10 @@ namespace OkeyGame.Core
         [SerializeField] private GameObject _apiServicePrefab;
         [SerializeField] private GameObject _signalRPrefab;
         [SerializeField] private GameObject _gameTableControllerPrefab;
+
+        [Header("Auto Test Mode")]
+        [SerializeField] private bool _autoConnectAndStartGame = true;
+        [SerializeField] private float _autoStartDelay = 1.5f;
 
         private void Awake()
         {
@@ -75,6 +80,37 @@ namespace OkeyGame.Core
             DontDestroyOnLoad(managerObj);
         }
 
+        private async void Start()
+        {
+            if (_autoConnectAndStartGame)
+            {
+                await Task.Delay((int)(_autoStartDelay * 1000));
+                AutoStartGame();
+            }
+        }
+
+        /// <summary>
+        /// Otomatik oyun başlat - Şimdilik demo mod ile
+        /// </summary>
+        private async void AutoStartGame()
+        {
+            Debug.Log("[Bootstrap] Auto-starting game in demo mode...");
+            
+            // Şimdilik direkt demo mod başlat - backend entegrasyonu sonra
+            await Task.Delay(100);
+            
+            var gameTable = GameTableController.Instance;
+            if (gameTable != null)
+            {
+                gameTable.StartDemoGame();
+                Debug.Log("[Bootstrap] Demo game started!");
+            }
+            else
+            {
+                Debug.LogError("[Bootstrap] GameTableController not found!");
+            }
+        }
+
         /// <summary>
         /// Oyun ayarlarını runtime'da güncelle
         /// </summary>
@@ -82,8 +118,6 @@ namespace OkeyGame.Core
         {
             if (_gameSettings != null)
             {
-                // Note: ScriptableObject değerlerini runtime'da değiştirmek 
-                // geçici olacaktır, kalıcı için PlayerPrefs kullanın
                 Debug.Log($"[Bootstrap] Server URL: {newUrl}");
             }
         }

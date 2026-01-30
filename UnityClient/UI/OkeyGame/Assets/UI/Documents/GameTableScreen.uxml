@@ -84,6 +84,8 @@
             <ui:VisualElement class="player-info-bar">
                 <ui:Label text="Rakibin sırası..." name="player-status" class="player-status" />
                 <ui:VisualElement class="action-buttons">
+                    <ui:Button text="🎨 Renge Göre" name="sort-color-button" class="action-button sort" />
+                    <ui:Button text="🔢 Numaraya Göre" name="sort-number-button" class="action-button sort" />
                     <ui:Button text="🗑️ Taşı At" name="discard-button" class="action-button discard" />
                     <ui:Button text="🏆 OKEY!" name="win-button" class="action-button win" />
                 </ui:VisualElement>

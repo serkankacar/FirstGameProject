@@ -37,6 +37,8 @@ namespace OkeyGame.UI
 
         // Player hand
         private Label _playerStatus;
+        private Button _sortColorButton;
+        private Button _sortNumberButton;
         private Button _discardButton;
         private Button _winButton;
         private VisualElement _handTilesContainer;
@@ -50,6 +52,7 @@ namespace OkeyGame.UI
 
         // Tile visuals
         private readonly Dictionary<int, VisualElement> _tileElements = new();
+        public bool IsInitialized { get; private set; } = false;
 
         private void OnEnable()
         {
@@ -57,6 +60,13 @@ namespace OkeyGame.UI
             InitializeUIReferences();
             RegisterCallbacks();
             SubscribeToGameEvents();
+            IsInitialized = true;
+        }
+
+        private void Start()
+        {
+            // Oyun başlayınca backend'den veri bekleniyor
+            Debug.Log("[GameTableScreen] Waiting for game to start from backend...");
         }
 
         private void OnDisable()
@@ -66,6 +76,12 @@ namespace OkeyGame.UI
 
         private void InitializeUIReferences()
         {
+            if (_root == null)
+            {
+                Debug.LogError("[GameTableScreen] Root is null!");
+                return;
+            }
+            
             // Top bar
             _roomName = _root.Q<Label>("room-name");
             _stakeBadge = _root.Q<Label>("stake-badge");
@@ -90,6 +106,8 @@ namespace OkeyGame.UI
 
             // Player hand
             _playerStatus = _root.Q<Label>("player-status");
+            _sortColorButton = _root.Q<Button>("sort-color-button");
+            _sortNumberButton = _root.Q<Button>("sort-number-button");
             _discardButton = _root.Q<Button>("discard-button");
             _winButton = _root.Q<Button>("win-button");
             _handTilesContainer = _root.Q<VisualElement>("hand-tiles-container");
@@ -100,16 +118,20 @@ namespace OkeyGame.UI
             _winType = _root.Q<Label>("win-type");
             _resultsContainer = _root.Q<VisualElement>("results-container");
             _continueButton = _root.Q<Button>("continue-button");
+            
+            Debug.Log($"[GameTableScreen] UI initialized - HandContainer: {_handTilesContainer != null}, DeckPile: {_deckPile != null}");
         }
 
         private void RegisterCallbacks()
         {
-            _menuButton.clicked += OnMenuClicked;
-            _deckPile.clicked += OnDeckClicked;
-            _discardPile.clicked += OnDiscardPileClicked;
-            _discardButton.clicked += OnDiscardButtonClicked;
-            _winButton.clicked += OnWinButtonClicked;
-            _continueButton.clicked += OnContinueClicked;
+            _menuButton?.RegisterCallback<ClickEvent>(evt => OnMenuClicked());
+            _deckPile?.RegisterCallback<ClickEvent>(evt => OnDeckClicked());
+            _discardPile?.RegisterCallback<ClickEvent>(evt => OnDiscardPileClicked());
+            _sortColorButton?.RegisterCallback<ClickEvent>(evt => OnSortByColorClicked());
+            _sortNumberButton?.RegisterCallback<ClickEvent>(evt => OnSortByNumberClicked());
+            _discardButton?.RegisterCallback<ClickEvent>(evt => OnDiscardButtonClicked());
+            _winButton?.RegisterCallback<ClickEvent>(evt => OnWinButtonClicked());
+            _continueButton?.RegisterCallback<ClickEvent>(evt => OnContinueClicked());
         }
 
         private void SubscribeToGameEvents()
@@ -125,6 +147,10 @@ namespace OkeyGame.UI
                 controller.OnIndicatorSet += UpdateIndicator;
                 controller.OnGameEnded += ShowGameOverModal;
                 controller.OnAutoPlayWarning += ShowAutoPlayWarning;
+                controller.OnTileDiscarded += OnTileDiscardedByPlayer;
+                controller.OnTileDrawn += OnTileDrawnByPlayer;
+                controller.OnOpponentDiscarded += OnOpponentDiscardedTile;
+                controller.OnOpponentDrew += OnOpponentDrewTile;
             }
         }
 
@@ -141,6 +167,10 @@ namespace OkeyGame.UI
                 controller.OnIndicatorSet -= UpdateIndicator;
                 controller.OnGameEnded -= ShowGameOverModal;
                 controller.OnAutoPlayWarning -= ShowAutoPlayWarning;
+                controller.OnTileDiscarded -= OnTileDiscardedByPlayer;
+                controller.OnTileDrawn -= OnTileDrawnByPlayer;
+                controller.OnOpponentDiscarded -= OnOpponentDiscardedTile;
+                controller.OnOpponentDrew -= OnOpponentDrewTile;
             }
         }
 
@@ -148,8 +178,16 @@ namespace OkeyGame.UI
 
         private void UpdateHandDisplay(List<OkeyTile> hand)
         {
+            if (_handTilesContainer == null) return;
+            
             _handTilesContainer.Clear();
             _tileElements.Clear();
+
+            if (hand == null || hand.Count == 0)
+            {
+                Debug.Log("[GameTableScreen] Hand is empty or null");
+                return;
+            }
 
             foreach (var tile in hand)
             {
@@ -159,16 +197,31 @@ namespace OkeyGame.UI
             }
 
             UpdateActionButtons();
+            Debug.Log($"[GameTableScreen] Updated hand display with {hand.Count} tiles");
         }
 
         private VisualElement CreateTileElement(OkeyTile tile)
         {
             var element = new VisualElement();
             element.AddToClassList("tile");
+            element.userData = tile; // Tile referansını sakla
             
+            // Okey taşı ise özel görsel
             if (tile.IsOkey)
             {
                 element.AddToClassList("okey");
+                
+                // Okey göstergesi - köşede yıldız
+                var okeyBadge = new Label("★");
+                okeyBadge.AddToClassList("okey-badge");
+                element.Add(okeyBadge);
+            }
+            
+            // Bu turda çekilen taş mı?
+            var drawnTile = GameTableController.Instance?.DrawnTile;
+            if (drawnTile != null && drawnTile.Id == tile.Id)
+            {
+                element.AddToClassList("just-drawn");
             }
 
             var numberLabel = new Label();
@@ -176,7 +229,9 @@ namespace OkeyGame.UI
             
             if (tile.IsFalseOkey)
             {
-                numberLabel.text = "J";
+                numberLabel.text = "★";
+                numberLabel.AddToClassList("false-joker");
+                
                 var jokerLabel = new Label("JOKER");
                 jokerLabel.AddToClassList("tile-joker-label");
                 element.Add(jokerLabel);
@@ -197,10 +252,74 @@ namespace OkeyGame.UI
 
             element.Add(numberLabel);
 
+            // Sürükle-bırak için pointer eventleri
+            SetupTileDragDrop(element, tile);
+
             // Click handler
             element.RegisterCallback<ClickEvent>(evt => OnTileClicked(tile));
 
             return element;
+        }
+        
+        private int _dragStartIndex = -1;
+        private VisualElement _draggedTile;
+        
+        private void SetupTileDragDrop(VisualElement element, OkeyTile tile)
+        {
+            element.RegisterCallback<PointerDownEvent>(evt =>
+            {
+                if (evt.button != 0) return; // Sol tık
+                
+                _draggedTile = element;
+                _dragStartIndex = _handTilesContainer.IndexOf(element);
+                element.AddToClassList("dragging");
+                element.CapturePointer(evt.pointerId);
+                evt.StopPropagation();
+            });
+            
+            element.RegisterCallback<PointerMoveEvent>(evt =>
+            {
+                if (_draggedTile != element) return;
+                // Sürükleme görselini güncelle - opacity azalt
+                element.style.opacity = 0.7f;
+            });
+            
+            element.RegisterCallback<PointerUpEvent>(evt =>
+            {
+                if (_draggedTile != element) return;
+                
+                element.RemoveFromClassList("dragging");
+                element.style.opacity = 1f;
+                element.ReleasePointer(evt.pointerId);
+                
+                // Bırakılan pozisyondaki taşı bul
+                int dropIndex = FindDropIndex(evt.position);
+                
+                if (dropIndex >= 0 && dropIndex != _dragStartIndex)
+                {
+                    // Taşları yer değiştir
+                    GameTableController.Instance?.SwapTiles(_dragStartIndex, dropIndex);
+                }
+                
+                _draggedTile = null;
+                _dragStartIndex = -1;
+                evt.StopPropagation();
+            });
+        }
+        
+        private int FindDropIndex(Vector2 pointerPosition)
+        {
+            if (_handTilesContainer == null) return -1;
+            
+            for (int i = 0; i < _handTilesContainer.childCount; i++)
+            {
+                var child = _handTilesContainer[i];
+                if (child.worldBound.Contains(pointerPosition))
+                {
+                    return i;
+                }
+            }
+            return -1;
         }
 
         private void UpdateTurnDisplay(int seatIndex, float timeRemaining)
@@ -255,6 +374,8 @@ namespace OkeyGame.UI
 
         private void UpdateIndicator(OkeyTile indicator)
         {
+            if (indicator == null || _indicatorNumber == null) return;
+            
             _indicatorNumber.text = indicator.Number.ToString();
             
             // Update color
@@ -270,6 +391,15 @@ namespace OkeyGame.UI
                 case TileColor.Black: _indicatorNumber.AddToClassList("black"); break;
                 case TileColor.Red: _indicatorNumber.AddToClassList("red"); break;
             }
+            
+            // Okey bilgisini göster (indicator'dan hesapla)
+            var controller = GameTableController.Instance;
+            if (controller != null)
+            {
+                int okeyNum = controller.OkeyNumber;
+                TileColor okeyColor = controller.OkeyColor;
+                Debug.Log($"[GameTableScreen] Okey: {okeyColor} {okeyNum}");
+            }
         }
 
         private void UpdateDrawIndicators()
@@ -277,45 +407,51 @@ namespace OkeyGame.UI
             var controller = GameTableController.Instance;
             bool canDraw = controller?.CanDraw() ?? false;
 
-            _deckPile.EnableInClassList("can-draw", canDraw);
+            _deckPile?.EnableInClassList("can-draw", canDraw);
             
             bool hasDiscard = controller?.LastDiscardedTile != null;
-            _discardPile.EnableInClassList("can-draw", canDraw && hasDiscard);
+            _discardPile?.EnableInClassList("can-draw", canDraw && hasDiscard);
 
             // Update discard tile display
-            if (controller?.LastDiscardedTile != null)
+            if (_discardTileNumber != null)
             {
-                var tile = controller.LastDiscardedTile;
-                _discardTileNumber.text = tile.IsFalseOkey ? "J" : tile.Number.ToString();
-                
-                _discardTileNumber.RemoveFromClassList("yellow");
-                _discardTileNumber.RemoveFromClassList("blue");
-                _discardTileNumber.RemoveFromClassList("black");
-                _discardTileNumber.RemoveFromClassList("red");
-
-                switch (tile.Color)
+                if (controller?.LastDiscardedTile != null)
                 {
-                    case TileColor.Yellow: _discardTileNumber.AddToClassList("yellow"); break;
-                    case TileColor.Blue: _discardTileNumber.AddToClassList("blue"); break;
-                    case TileColor.Black: _discardTileNumber.AddToClassList("black"); break;
-                    case TileColor.Red: _discardTileNumber.AddToClassList("red"); break;
+                    var tile = controller.LastDiscardedTile;
+                    _discardTileNumber.text = tile.IsFalseOkey ? "J" : tile.Number.ToString();
+                    
+                    _discardTileNumber.RemoveFromClassList("yellow");
+                    _discardTileNumber.RemoveFromClassList("blue");
+                    _discardTileNumber.RemoveFromClassList("black");
+                    _discardTileNumber.RemoveFromClassList("red");
+
+                    switch (tile.Color)
+                    {
+                        case TileColor.Yellow: _discardTileNumber.AddToClassList("yellow"); break;
+                        case TileColor.Blue: _discardTileNumber.AddToClassList("blue"); break;
+                        case TileColor.Black: _discardTileNumber.AddToClassList("black"); break;
+                        case TileColor.Red: _discardTileNumber.AddToClassList("red"); break;
+                    }
                 }
-            }
-            else
-            {
-                _discardTileNumber.text = "";
+                else
+                {
+                    _discardTileNumber.text = "";
+                }
             }
 
             // Update deck count
-            _deckCount.text = controller?.DeckCount.ToString() ?? "0";
+            if (_deckCount != null)
+            {
+                _deckCount.text = controller?.DeckCount.ToString() ?? "0";
+            }
         }
 
         private void UpdateActionButtons()
         {
             var controller = GameTableController.Instance;
             
-            _discardButton.SetEnabled(controller?.CanDiscard() == true && controller?.SelectedTile != null);
-            _winButton.SetEnabled(controller?.CanDeclareWin() == true);
+            _discardButton?.SetEnabled(controller?.CanDiscard() == true && controller?.SelectedTile != null);
+            _winButton?.SetEnabled(controller?.CanDeclareWin() == true);
         }
 
         private void UpdateOpponentHighlights(int currentTurnSeat)
@@ -365,36 +501,59 @@ namespace OkeyGame.UI
 
         private void ShowGameOverModal(GameEndResult result)
         {
-            _winnerName.text = $"Kazanan: {result.WinnerName}";
-            _winType.text = GetWinTypeText(result.WinType);
-
-            _resultsContainer.Clear();
+            Debug.Log($"[GameTableScreen] Showing game over modal. Winner: {result?.WinnerName}");
             
-            foreach (var playerResult in result.PlayerResults)
+            if (_gameOverModal == null)
             {
+                Debug.LogError("[GameTableScreen] Game over modal not found!");
+                return;
+            }
+            
+            _winnerName.text = $"Kazanan: {result?.WinnerName ?? "Bilinmiyor"}";
+            _winType.text = GetWinTypeText(result?.WinType ?? "Normal");
+
+            _resultsContainer?.Clear();
+            
+            if (result?.PlayerResults != null)
+            {
+                foreach (var playerResult in result.PlayerResults)
+                {
+                    var row = new VisualElement();
+                    row.AddToClassList("result-row");
+
+                    var nameLabel = new Label(playerResult.Username);
+                    nameLabel.AddToClassList("result-player");
+                    row.Add(nameLabel);
+
+                    var chipsLabel = new Label();
+                    chipsLabel.AddToClassList("result-chips");
+                    
+                    if (playerResult.ChipChange > 0)
+                    {
+                        chipsLabel.text = $"+{playerResult.ChipChange:N0}";
+                        chipsLabel.AddToClassList("positive");
+                    }
+                    else
+                    {
+                        chipsLabel.text = $"{playerResult.ChipChange:N0}";
+                        chipsLabel.AddToClassList("negative");
+                    }
+                    row.Add(chipsLabel);
+
+                    _resultsContainer?.Add(row);
+                }
+            }
+            else
+            {
+                // Demo modda basit sonuç göster
                 var row = new VisualElement();
                 row.AddToClassList("result-row");
-
-                var nameLabel = new Label(playerResult.Username);
+                
+                var nameLabel = new Label(result?.IsMyWin == true ? "Tebrikler! Kazandınız!" : "Oyun bitti");
                 nameLabel.AddToClassList("result-player");
                 row.Add(nameLabel);
-
-                var chipsLabel = new Label();
-                chipsLabel.AddToClassList("result-chips");
                 
-                if (playerResult.ChipChange > 0)
-                {
-                    chipsLabel.text = $"+{playerResult.ChipChange:N0}";
-                    chipsLabel.AddToClassList("positive");
-                }
-                else
-                {
-                    chipsLabel.text = $"{playerResult.ChipChange:N0}";
-                    chipsLabel.AddToClassList("negative");
-                }
-                row.Add(chipsLabel);
-
-                _resultsContainer.Add(row);
+                _resultsContainer?.Add(row);
             }
 
             _gameOverModal.style.display = DisplayStyle.Flex;
@@ -423,16 +582,31 @@ namespace OkeyGame.UI
 
         private void OnDeckClicked()
         {
+            Debug.Log("[GameTableScreen] Deck clicked - attempting to draw");
             GameTableController.Instance?.DrawFromDeck();
         }
 
         private void OnDiscardPileClicked()
         {
+            Debug.Log("[GameTableScreen] Discard pile clicked - attempting to draw");
             GameTableController.Instance?.DrawFromDiscard();
+        }
+
+        private void OnSortByColorClicked()
+        {
+            Debug.Log("[GameTableScreen] Sort by color clicked");
+            GameTableController.Instance?.SortHandByColor();
+        }
+
+        private void OnSortByNumberClicked()
+        {
+            Debug.Log("[GameTableScreen] Sort by number clicked");
+            GameTableController.Instance?.SortHandByNumber();
         }
 
         private void OnDiscardButtonClicked()
         {
+            Debug.Log("[GameTableScreen] Discard button clicked");
             GameTableController.Instance?.DiscardSelectedTile();
         }
 
@@ -451,7 +625,139 @@ namespace OkeyGame.UI
         {
             _gameOverModal.style.display = DisplayStyle.None;
             GameManager.Instance?.LeaveRoom();
-            // TODO: Return to lobby
+            SceneController.Instance?.ShowLobby();
+        }
+
+        /// <summary>
+        /// Bir taş atıldığında çağrılır - atık yığınını günceller
+        /// </summary>
+        private void OnTileDiscardedByPlayer(OkeyTile tile)
+        {
+            Debug.Log($"[GameTableScreen] Tile discarded: {tile?.Color} {tile?.Number}");
+            UpdateDrawIndicators();
+            UpdateDiscardPileDisplay(tile);
+        }
+
+        /// <summary>
+        /// Bir taş çekildiğinde çağrılır - deste sayısını günceller
+        /// </summary>
+        private void OnTileDrawnByPlayer(OkeyTile tile)
+        {
+            Debug.Log($"[GameTableScreen] Tile drawn: {tile?.Color} {tile?.Number}");
+            UpdateDrawIndicators();
+        }
+
+        /// <summary>
+        /// Rakip/Bot taş attığında çağrılır - görsel feedback verir
+        /// </summary>
+        private void OnOpponentDiscardedTile(string playerId, OkeyTile tile)
+        {
+            Debug.Log($"[GameTableScreen] Opponent {playerId} discarded: {tile?.Color} {tile?.Number}");
+            
+            // Atılan taşı güncelle
+            UpdateDiscardPileDisplay(tile);
+            
+            // Hangi oyuncunun attığını bul ve görsel feedback ver
+            int opponentIndex = GetOpponentIndexByPlayerId(playerId);
+            if (opponentIndex >= 0 && opponentIndex < _opponentInfos.Length && _opponentInfos[opponentIndex] != null)
+            {
+                // Oyuncu panelini kısa süreliğine vurgula (taş attı efekti)
+                var panel = _opponentInfos[opponentIndex];
+                panel.AddToClassList("discarding");
+                
+                // 800ms sonra efekti kaldır
+                panel.schedule.Execute(() =>
+                {
+                    panel.RemoveFromClassList("discarding");
+                }).StartingIn(800);
+            }
+            
+            // Atık yığınını animasyonla vurgula
+            if (_discardPile != null)
+            {
+                _discardPile.AddToClassList("new-tile");
+                _discardPile.schedule.Execute(() =>
+                {
+                    _discardPile.RemoveFromClassList("new-tile");
+                }).StartingIn(500);
+            }
+        }
+
+        /// <summary>
+        /// Rakip/Bot taş çektiğinde çağrılır - görsel feedback verir
+        /// </summary>
+        private void OnOpponentDrewTile(string playerId, bool fromDiscard)
+        {
+            Debug.Log($"[GameTableScreen] Opponent {playerId} drew a tile (fromDiscard: {fromDiscard})");
+            
+            // Hangi oyuncunun çektiğini bul ve görsel feedback ver
+            int opponentIndex = GetOpponentIndexByPlayerId(playerId);
+            if (opponentIndex >= 0 && opponentIndex < _opponentInfos.Length && _opponentInfos[opponentIndex] != null)
+            {
+                var panel = _opponentInfos[opponentIndex];
+                panel.AddToClassList("drawing");
+                
+                // 600ms sonra efekti kaldır
+                panel.schedule.Execute(() =>
+                {
+                    panel.RemoveFromClassList("drawing");
+                }).StartingIn(600);
+            }
+            
+            // Deste sayısını güncelle
+            UpdateDrawIndicators();
+        }
+
+        /// <summary>
+        /// Atık yığını görüntüsünü günceller
+        /// </summary>
+        private void UpdateDiscardPileDisplay(OkeyTile tile)
+        {
+            if (_discardTileNumber == null || tile == null) return;
+            
+            _discardTileNumber.text = tile.IsFalseOkey ? "J" : tile.Number.ToString();
+            
+            // Renk sınıflarını güncelle
+            _discardTileNumber.RemoveFromClassList("yellow");
+            _discardTileNumber.RemoveFromClassList("blue");
+            _discardTileNumber.RemoveFromClassList("black");
+            _discardTileNumber.RemoveFromClassList("red");
+
+            switch (tile.Color)
+            {
+                case TileColor.Yellow: _discardTileNumber.AddToClassList("yellow"); break;
+                case TileColor.Blue: _discardTileNumber.AddToClassList("blue"); break;
+                case TileColor.Black: _discardTileNumber.AddToClassList("black"); break;
+                case TileColor.Red: _discardTileNumber.AddToClassList("red"); break;
+            }
+            
+            Debug.Log($"[GameTableScreen] Discard pile updated to show: {tile.Color} {tile.Number}");
+        }
+
+        /// <summary>
+        /// PlayerId'ye göre rakip indeksini bulur
+        /// </summary>
+        private int GetOpponentIndexByPlayerId(string playerId)
+        {
+            // Demo modda bot-X formatından index çıkar
+            if (playerId.StartsWith("bot-"))
+            {
+                if (int.TryParse(playerId.Replace("bot-", ""), out int botNum))
+                {
+                    return botNum - 1; // bot-1 -> 0, bot-2 -> 1, bot-3 -> 2
+                }
+            }
+            
+            // Online modda seat index'e göre hesapla
+            // Basit hesaplama: playerId hash'inden index
+            if (!string.IsNullOrEmpty(playerId))
+            {
+                // Seat index bazlı hesaplama yapabiliriz
+                // Şimdilik hash'den modulo 3 alalım
+                return Mathf.Abs(playerId.GetHashCode()) % 3;
+            }
+            
+            return -1;
         }
 
         #endregion

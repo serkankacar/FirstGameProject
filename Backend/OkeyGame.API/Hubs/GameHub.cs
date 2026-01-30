@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.SignalR;
 using OkeyGame.API.Models;
 using OkeyGame.API.Services;
 using OkeyGame.Application.DTOs;
+using OkeyGame.Domain.AI;
 using OkeyGame.Domain.Enums;
 
 namespace OkeyGame.API.Hubs;
@@ -29,6 +30,7 @@ public class GameHub : Hub
 
     private readonly IGameService _gameService;
     private readonly IGameStateService _stateService;
+    private readonly IBotPlayerService _botService;
     private readonly ILogger<GameHub> _logger;
 
     // SignalR Group prefix'i
@@ -41,10 +43,12 @@ public class GameHub : Hub
     public GameHub(
         IGameService gameService,
         IGameStateService stateService,
+        IBotPlayerService botService,
         ILogger<GameHub> logger)
     {
         _gameService = gameService;
         _stateService = stateService;
+        _botService = botService;
         _logger = logger;
     }
 
@@ -309,6 +313,7 @@ public class GameHub : Hub
 
     /// <summary>
     /// Oyunu başlatır.
+    /// Yeterli oyuncu yoksa otomatik olarak bot ekler.
     /// </summary>
     /// <param name="roomId">Oda ID'si</param>
     public async Task StartGame(Guid roomId)
@@ -322,6 +327,28 @@ public class GameHub : Hub
 
         try
         {
+            // Mevcut oda durumunu kontrol et
+            var roomState = await _gameService.GetRoomStateAsync(roomId);
+            if (roomState == null)
+            {
+                await SendError("Oda bulunamadı.");
+                return;
+            }
+
+            // Yeterli oyuncu yoksa bot ekle
+            if (roomState.Players.Count < 4)
+            {
+                _logger.LogInformation(
+                    "Eksik oyuncu tespit edildi: {CurrentCount}/4. Bot ekleniyor...",
+                    roomState.Players.Count);
+
+                var addedBots = await _botService.FillRoomWithBotsAsync(roomId, BotDifficulty.Normal);
+                
+                _logger.LogInformation(
+                    "{BotCount} bot eklendi. Oda: {RoomId}",
+                    addedBots.Count, roomId);
+            }
+
             var (success, error) = await _gameService.StartGameAsync(roomId);
 
             if (!success)
@@ -330,13 +357,20 @@ public class GameHub : Hub
                 return;
             }
 
-            // Tüm oyunculara oyun durumunu gönder
-            var roomState = await _gameService.GetRoomStateAsync(roomId);
+            // Güncel oda durumunu al
+            roomState = await _gameService.GetRoomStateAsync(roomId);
             if (roomState == null) return;
 
+            // Tüm insan oyunculara oyun durumunu gönder (botlara değil)
             foreach (var player in roomState.Players.Values)
             {
-                if (player.ConnectionId == null) continue;
+                // Bot oyunculara SignalR mesajı göndermeye gerek yok
+                if (_botService.IsBot(player.PlayerId))
+                {
+                    continue;
+                }
+
+                if (string.IsNullOrEmpty(player.ConnectionId)) continue;
 
                 var gameState = await _gameService.GetGameStateForPlayerAsync(roomId, player.PlayerId);
                 if (gameState == null) continue;
@@ -350,12 +384,39 @@ public class GameHub : Hub
             }
 
             _logger.LogInformation("Oyun başlatıldı: {RoomId}", roomId);
+
+            // İlk oyuncu bot ise, bot turunu başlat
+            await _botService.CheckAndProcessBotTurnAsync(roomId);
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Oyun başlatma hatası");
             await SendError("Oyun başlatılamadı: " + ex.Message);
         }
+    }
+
+    /// <summary>
+    /// Oyunu botlarla başlatır.
+    /// </summary>
+    /// <param name="roomIdStr">Oda ID'si</param>
+    /// <param name="botDifficulty">Bot zorluk seviyesi (0=Easy, 1=Normal, 2=Hard, 3=Expert)</param>
+    public async Task StartGameWithBots(string roomIdStr, int botDifficulty = 1)
+    {
+        if (!Guid.TryParse(roomIdStr, out var roomId))
+        {
+            await SendError("Geçersiz oda ID'si.");
+            return;
+        }
+
+        var difficulty = (BotDifficulty)Math.Clamp(botDifficulty, 0, 3);
+        
+        // Botları ekle
+        var addedBots = await _botService.FillRoomWithBotsAsync(roomId, difficulty);
+        _logger.LogInformation("{BotCount} bot eklendi ({Difficulty}). Oda: {RoomId}",
+            addedBots.Count, difficulty, roomId);
+
+        // Oyunu başlat
+        await StartGame(roomId);
     }
 
     #endregion
@@ -462,7 +523,7 @@ public class GameHub : Hub
                 return;
             }
 
-            // Atılan taşı herkese bildir
+            // Atılan taşı herkese bildir (tam taş bilgisiyle)
             var roomState = await _gameService.GetRoomStateAsync(roomId);
             
             await Clients.Group(GetRoomGroup(roomId))
@@ -470,12 +531,24 @@ public class GameHub : Hub
                 {
                     PlayerId = playerId.Value,
                     TileId = tileId,
+                    Tile = result.DiscardedTile != null ? new {
+                        Id = result.DiscardedTile.Id,
+                        Color = result.DiscardedTile.Color.ToString(),
+                        Number = result.DiscardedTile.Value,
+                        IsFalseJoker = result.DiscardedTile.IsFalseJoker
+                    } : null,
                     NextTurnPlayerId = roomState?.CurrentTurnPlayerId,
                     NextTurnPosition = roomState?.CurrentTurnPosition,
                     Timestamp = DateTime.UtcNow
                 });
 
             _logger.LogDebug("Taş atıldı: {PlayerId} -> Tile {TileId}", playerId.Value, tileId);
+
+            // Sonraki oyuncu bot ise, bot turunu başlat
+            if (roomState != null)
+            {
+                await _botService.CheckAndProcessBotTurnAsync(roomId);
+            }
         }
         catch (Exception ex)
         {

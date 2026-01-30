@@ -3,14 +3,11 @@
 /* Root container - Full screen */
 .main-menu-container {
     flex-grow: 1;
-    width: 100%;
-    height: 100%;
-    background-color: rgb(15, 65, 40);
+    /* Güvenli Koyu Yeşil Arka Plan */
+    background-color: rgb(10, 25, 15);
     align-items: center;
     justify-content: center;
     padding: 40px;
-    /* Gradient effect with darker edges */
-    background-image: linear-gradient(rgba(0, 0, 0, 0.3), rgba(0, 0, 0, 0) 30%, rgba(0, 0, 0, 0) 70%, rgba(0, 0, 0, 0.3));
 }
 
 /* Logo */
@@ -20,12 +17,13 @@
 }
 
 .logo-text {
-    font-size: 72px;
-    color: rgb(255, 215, 0);
+    /* Gold color without text-shadow */
+    color: rgb(255, 215, 0); 
     -unity-font-style: bold;
-    -unity-text-outline-width: 3px;
-    -unity-text-outline-color: rgb(100, 50, 0);
-    text-shadow: 0 4px 8px rgba(0, 0, 0, 0.5);
+    -unity-text-outline-width: 0;
+    
+    letter-spacing: 5px;
+    margin-bottom: 5px;
 }
 
 .logo-subtitle {
@@ -42,15 +40,17 @@
     align-items: stretch;
 }
 
-/* Base button style */
+/* Base button style - Glassmorphism + 3D */
 .menu-button {
-    height: 70px;
-    margin: 10px 0;
-    border-radius: 12px;
-    font-size: 24px;
+    height: 75px;
+    margin: 12px 0;
+    border-radius: 16px;
+    font-size: 26px;
     -unity-font-style: bold;
-    border-width: 3px;
-    transition-duration: 0.2s;
+    border-width: 0;
+    border-bottom-width: 6px; /* 3D effect */
+    transition-duration: 0.1s;
+    transition-property: scale, background-color;
 }
 
 .menu-button:hover {
@@ -61,10 +61,10 @@
     scale: 0.98;
 }
 
-/* Play button - Primary */
+/* Play button - Primary Green */
 .play-button {
-    background-color: rgb(46, 139, 87);
-    border-color: rgb(34, 100, 60);
+    background-color: rgb(46, 160, 90);
+    border-bottom-color: rgb(30, 100, 60);
     color: white;
 }
 

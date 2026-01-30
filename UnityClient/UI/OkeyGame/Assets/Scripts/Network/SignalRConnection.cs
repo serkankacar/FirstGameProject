@@ -4,7 +4,10 @@ using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using UnityEngine;
 using UnityEngine.Networking;
+using OkeyGame.Core;
 using OkeyGame.Models;
+
+using GameState = OkeyGame.Models.GameState;
 
 namespace OkeyGame.Network
 {
@@ -27,6 +30,10 @@ namespace OkeyGame.Network
         private string _authToken;
         private bool _isReconnecting;
 
+        // Current Room
+        private string _currentRoomId;
+        public string CurrentRoomId => _currentRoomId;
+
         // Events
         public event Action OnConnected;
         public event Action OnDisconnected;
@@ -37,10 +44,12 @@ namespace OkeyGame.Network
         public event Action<RoomInfo> OnRoomJoined;
         public event Action<PlayerInfo> OnPlayerJoined;
         public event Action<string> OnPlayerLeft;
+        public event Action<GameStartedData> OnGameStarted;
         public event Action<GameState> OnGameStateUpdate;
         public event Action<string, OkeyTile> OnTileDrawn;
         public event Action<string, OkeyTile> OnTileDiscarded;
         public event Action<int, float> OnTurnChanged;
+        public event Action<int, int> OnDeckUpdated; // RemainingCount, DiscardPileCount
         public event Action<GameEndResult> OnGameEnded;
         public event Action<string> OnChatMessage;
         public event Action<string, string> OnPlayerAction; // PlayerId, Action
@@ -279,9 +288,196 @@ namespace OkeyGame.Network
                     }
                     break;
 
+                case "OnGameStarted":
+                case "GameStarted":
+                    Debug.Log($"[SignalR] Game started event received!");
+                    try
+                    {
+                        var gameStartedData = JsonUtility.FromJson<GameStartedData>(argsJson);
+                        if (gameStartedData != null)
+                        {
+                            Debug.Log($"[SignalR] Game started in room: {gameStartedData.RoomId}");
+                            OnGameStarted?.Invoke(gameStartedData);
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        Debug.LogError($"[SignalR] GameStarted parse error: {ex.Message}");
+                        // Fallback - empty data
+                        OnGameStarted?.Invoke(new GameStartedData { Message = "Game started" });
+                    }
+                    break;
+
+                case "PlayerJoined":
+                case "OnPlayerJoined":
+                    Debug.Log($"[SignalR] Player joined event received!");
+                    try
+                    {
+                        var playerInfo = JsonUtility.FromJson<PlayerInfo>(argsJson);
+                        if (playerInfo != null)
+                        {
+                            Debug.Log($"[SignalR] Player joined: {playerInfo.Name ?? playerInfo.PlayerName ?? playerInfo.Username}");
+                            OnPlayerJoined?.Invoke(playerInfo);
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        Debug.LogError($"[SignalR] PlayerJoined parse error: {ex.Message}");
+                    }
+                    break;
+
+                case "PlayerLeft":
+                case "OnPlayerLeft":
+                    Debug.Log($"[SignalR] Player left event received!");
+                    OnPlayerLeft?.Invoke(argsJson.Trim('"'));
+                    break;
+
+                case "TileDrawn":
+                case "OnTileDrawn":
+                    Debug.Log($"[SignalR] Tile drawn event received!");
+                    try
+                    {
+                        // Backend sends: { Tile: {...}, FromDiscard: bool, Timestamp: ... }
+                        var drawData = JsonUtility.FromJson<TileDrawnData>(argsJson);
+                        if (drawData?.Tile != null)
+                        {
+                            // This is my drawn tile (only sent to the caller)
+                            OnTileDrawn?.Invoke(GameManager.Instance?.PlayerId ?? "", drawData.Tile);
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        Debug.LogError($"[SignalR] TileDrawn parse error: {ex.Message}");
+                    }
+                    break;
+
+                case "OnOpponentDrewTile":
+                    Debug.Log($"[SignalR] Opponent drew tile event received!");
+                    try
+                    {
+                        // Backend sends: { PlayerId: guid, FromDiscard: bool, Timestamp: ... }
+                        var opponentDrawData = JsonUtility.FromJson<OpponentDrewTileData>(argsJson);
+                        if (opponentDrawData != null)
+                        {
+                            // Opponent drew a tile (we don't see what tile)
+                            OnTileDrawn?.Invoke(opponentDrawData.PlayerId, null);
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        Debug.LogError($"[SignalR] OpponentDrewTile parse error: {ex.Message}");
+                    }
+                    break;
+
+                case "TileDiscarded":
+                case "OnTileDiscarded":
+                    Debug.Log($"[SignalR] Tile discarded event received!");
+                    try
+                    {
+                        // Backend sends: { PlayerId: guid, TileId: int, Tile: {...}, NextTurnPlayerId: guid, ... }
+                        var discardData = JsonUtility.FromJson<TileDiscardedData>(argsJson);
+                        if (discardData != null)
+                        {
+                            OkeyTile tile;
+                            // Backend'den tam taş bilgisi geliyorsa kullan
+                            if (discardData.Tile != null && !string.IsNullOrEmpty(discardData.Tile.Color))
+                            {
+                                TileColor color = TileColor.Yellow; // default
+                                if (System.Enum.TryParse<TileColor>(discardData.Tile.Color, true, out var parsedColor))
+                                {
+                                    color = parsedColor;
+                                }
+                                tile = new OkeyTile 
+                                { 
+                                    Id = discardData.Tile.Id,
+                                    Color = color,
+                                    Number = discardData.Tile.Number,
+                                    IsFalseOkey = discardData.Tile.IsFalseJoker
+                                };
+                                Debug.Log($"[SignalR] Full tile data: Id={tile.Id}, Color={tile.Color}, Number={tile.Number}");
+                            }
+                            else
+                            {
+                                // Geriye uyumluluk: sadece ID varsa
+                                tile = new OkeyTile { Id = discardData.TileId };
+                                Debug.LogWarning($"[SignalR] Only TileId received: {discardData.TileId}, no color/number info");
+                            }
+                            OnTileDiscarded?.Invoke(discardData.PlayerId, tile);
+                            
+                            // Trigger turn change if provided
+                            if (!string.IsNullOrEmpty(discardData.NextTurnPlayerId))
+                            {
+                                OnTurnChanged?.Invoke(discardData.NextTurnPosition, 30f); // Default turn time
+                            }
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        Debug.LogError($"[SignalR] TileDiscarded parse error: {ex.Message}");
+                    }
+                    break;
+
+                case "TurnChanged":
+                case "OnTurnChanged":
+                    Debug.Log($"[SignalR] Turn changed event received!");
+                    try
+                    {
+                        var parts = SplitArguments(argsJson);
+                        if (parts.Length >= 2)
+                        {
+                            int seatIndex = int.Parse(parts[0]);
+                            float timeRemaining = float.Parse(parts[1]);
+                            OnTurnChanged?.Invoke(seatIndex, timeRemaining);
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        Debug.LogError($"[SignalR] TurnChanged parse error: {ex.Message}");
+                    }
+                    break;
+
+                case "GameEnded":
+                case "OnGameEnded":
+                    Debug.Log($"[SignalR] Game ended event received!");
+                    try
+                    {
+                        var result = JsonUtility.FromJson<GameEndResult>(argsJson);
+                        OnGameEnded?.Invoke(result);
+                    }
+                    catch (Exception ex)
+                    {
+                        Debug.LogError($"[SignalR] GameEnded parse error: {ex.Message}");
+                    }
+                    break;
+
                 case "OnError":
                     Debug.LogError($"[SignalR] Server error: {argsJson}");
                     OnError?.Invoke(argsJson);
+                    break;
+
+                case "OnDeckUpdated":
+                    Debug.Log($"[SignalR] Deck updated event received!");
+                    try
+                    {
+                        var deckData = JsonUtility.FromJson<DeckUpdatedData>(argsJson);
+                        if (deckData != null)
+                        {
+                            OnDeckUpdated?.Invoke(deckData.RemainingTileCount, deckData.DiscardPileCount);
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        Debug.LogError($"[SignalR] DeckUpdated parse error: {ex.Message}");
+                    }
+                    break;
+
+                case "OnReconnected":
+                    Debug.Log($"[SignalR] Reconnected event received!");
+                    // Handle reconnection - refresh game state
+                    break;
+
+                case "OnRoomLeft":
+                    Debug.Log($"[SignalR] Room left event received!");
                     break;
 
                 default:
@@ -443,6 +639,7 @@ namespace OkeyGame.Network
         public void LeaveRoom()
         {
             InvokeAsync("LeaveRoom");
+            _currentRoomId = null; // Oda ID'sini temizle
         }
 
         public void SetReady(bool isReady)
@@ -466,6 +663,7 @@ namespace OkeyGame.Network
             void OnRoomJoinedHandler(RoomInfo room)
             {
                 OnRoomJoined -= OnRoomJoinedHandler;
+                _currentRoomId = room?.Id ?? room?.RoomId; // Oda ID'sini kaydet
                 tcs.TrySetResult(true);
             }
 
@@ -511,6 +709,7 @@ namespace OkeyGame.Network
             void OnRoomJoinedHandler(RoomInfo room)
             {
                 OnRoomJoined -= OnRoomJoinedHandler;
+                _currentRoomId = roomId; // Oda ID'sini kaydet
                 tcs.TrySetResult(true);
             }
 
@@ -540,29 +739,196 @@ namespace OkeyGame.Network
             return await tcs.Task;
         }
 
+        /// <summary>
+        /// Desteden taş çek
+        /// </summary>
         public void DrawFromDeck()
         {
-            InvokeAsync("DrawFromDeck");
+            if (string.IsNullOrEmpty(_currentRoomId))
+            {
+                Debug.LogWarning("[SignalR] DrawFromDeck: No room ID set");
+                return;
+            }
+            InvokeAsync("DrawTile", _currentRoomId);
         }
 
+        /// <summary>
+        /// Atık yığınından taş çek
+        /// </summary>
         public void DrawFromDiscard()
         {
-            InvokeAsync("DrawFromDiscard");
+            if (string.IsNullOrEmpty(_currentRoomId))
+            {
+                Debug.LogWarning("[SignalR] DrawFromDiscard: No room ID set");
+                return;
+            }
+            InvokeAsync("DrawFromDiscard", _currentRoomId);
         }
 
+        /// <summary>
+        /// Taş at
+        /// </summary>
         public void DiscardTile(int tileId)
         {
-            InvokeAsync("DiscardTile", tileId);
+            if (string.IsNullOrEmpty(_currentRoomId))
+            {
+                Debug.LogWarning("[SignalR] DiscardTile: No room ID set");
+                return;
+            }
+            InvokeAsync("ThrowTile", _currentRoomId, tileId);
         }
 
+        /// <summary>
+        /// Kazanma bildirimi
+        /// </summary>
         public void DeclareWin(List<List<int>> sets)
         {
-            InvokeAsync("DeclareWin", sets);
+            if (string.IsNullOrEmpty(_currentRoomId))
+            {
+                Debug.LogWarning("[SignalR] DeclareWin: No room ID set");
+                return;
+            }
+            InvokeAsync("DeclareWin", _currentRoomId, sets);
         }
 
         public void SendChatMessage(string message)
         {
             InvokeAsync("SendChatMessage", message);
+        }
+
+        /// <summary>
+        /// Oyunu başlat (4 oyuncu gerekli)
+        /// </summary>
+        public async Task<bool> StartGame(string roomId)
+        {
+            if (!IsConnected)
+            {
+                Debug.LogWarning("[SignalR] Cannot start game: Not connected");
+                return false;
+            }
+
+            var tcs = new TaskCompletionSource<bool>();
+            
+            void OnGameStartedHandler(GameStartedData data)
+            {
+                OnGameStarted -= OnGameStartedHandler;
+                tcs.TrySetResult(true);
+            }
+
+            void OnErrorHandler(string error)
+            {
+                OnError -= OnErrorHandler;
+                tcs.TrySetResult(false);
+            }
+
+            OnGameStarted += OnGameStartedHandler;
+            OnError += OnErrorHandler;
+
+            InvokeAsync("StartGame", roomId);
+
+            // 15 saniye timeout
+            var timeoutTask = Task.Delay(15000);
+            var completedTask = await Task.WhenAny(tcs.Task, timeoutTask);
+
+            if (completedTask == timeoutTask)
+            {
+                OnGameStarted -= OnGameStartedHandler;
+                OnError -= OnErrorHandler;
+                Debug.LogWarning("[SignalR] Start game timeout");
+                return false;
+            }
+
+            return await tcs.Task;
+        }
+
+        /// <summary>
+        /// Botlarla oyunu başlat
+        /// </summary>
+        public async Task<bool> StartGameWithBots(string roomId, int botDifficulty = 1)
+        {
+            if (!IsConnected)
+            {
+                Debug.LogWarning("[SignalR] Cannot start game with bots: Not connected");
+                return false;
+            }
+
+            var tcs = new TaskCompletionSource<bool>();
+            
+            void OnGameStartedHandler(GameStartedData data)
+            {
+                OnGameStarted -= OnGameStartedHandler;
+                tcs.TrySetResult(true);
+            }
+
+            void OnErrorHandler(string error)
+            {
+                OnError -= OnErrorHandler;
+                tcs.TrySetResult(false);
+            }
+
+            OnGameStarted += OnGameStartedHandler;
+            OnError += OnErrorHandler;
+
+            InvokeAsync("StartGameWithBots", roomId, botDifficulty);
+
+            // 15 saniye timeout
+            var timeoutTask = Task.Delay(15000);
+            var completedTask = await Task.WhenAny(tcs.Task, timeoutTask);
+
+            if (completedTask == timeoutTask)
+            {
+                OnGameStarted -= OnGameStartedHandler;
+                OnError -= OnErrorHandler;
+                Debug.LogWarning("[SignalR] Start game with bots timeout");
+                return false;
+            }
+
+            return await tcs.Task;
+        }
+
+        #endregion
+
+        #region Helper Methods
+
+        /// <summary>
+        /// JSON array argümanlarını ayırır
+        /// </summary>
+        private string[] SplitArguments(string argsJson)
+        {
+            if (string.IsNullOrEmpty(argsJson)) return new string[0];
+            
+            var result = new List<string>();
+            int depth = 0;
+            int start = 0;
+            bool inString = false;
+            
+            for (int i = 0; i < argsJson.Length; i++)
+            {
+                char c = argsJson[i];
+                
+                if (c == '"' && (i == 0 || argsJson[i - 1] != '\\'))
+                {
+                    inString = !inString;
+                }
+                else if (!inString)
+                {
+                    if (c == '{' || c == '[') depth++;
+                    else if (c == '}' || c == ']') depth--;
+                    else if (c == ',' && depth == 0)
+                    {
+                        result.Add(argsJson.Substring(start, i - start).Trim());
+                        start = i + 1;
+                    }
+                }
+            }
+            
+            // Son parça
+            if (start < argsJson.Length)
+            {
+                result.Add(argsJson.Substring(start).Trim());
+            }
+            
+            return result.ToArray();
         }
 
         #endregion

@@ -40,6 +40,12 @@ public class BotDecision
     /// <summary>Simüle edilecek düşünme süresi (ms).</summary>
     public int ThinkingTimeMs { get; }
 
+    /// <summary>Discard'dan mı çekileceği.</summary>
+    public bool ShouldDrawFromDiscard => Type == BotDecisionType.DrawFromDiscard;
+
+    /// <summary>Kazanma hamlesi mi?</summary>
+    public bool IsWinning => Type == BotDecisionType.DeclareWin;
+
     private BotDecision(BotDecisionType type, Tile? tile, int confidence, string reasoning, int thinkingTimeMs)
     {
         Type = type;
