@@ -112,17 +112,19 @@ public sealed class ProvablyFairCommitment : IEquatable<ProvablyFairCommitment>
     /// <param name="tiles">Karıştırılmış taş listesi</param>
     /// <param name="nonce">Oyun sayacı</param>
     /// <param name="tileSerializer">Taşı serialize eden fonksiyon</param>
+    /// <param name="serverSeed">Özel sunucu seed'i (opsiyonel)</param>
     /// <returns>Yeni commitment</returns>
     public static ProvablyFairCommitment Create<T>(
         IEnumerable<T> tiles,
         long nonce,
-        Func<T, object> tileSerializer)
+        Func<T, object> tileSerializer,
+        Guid? serverSeed = null)
     {
         ArgumentNullException.ThrowIfNull(tiles);
         ArgumentNullException.ThrowIfNull(tileSerializer);
 
-        // Kriptografik olarak güvenli ServerSeed oluştur
-        var serverSeed = GenerateSecureGuid();
+        // Kriptografik olarak güvenli ServerSeed oluştur (verilmediyse)
+        var actualServerSeed = serverSeed ?? GenerateSecureGuid();
 
         // Taşları JSON'a serialize et
         var tileData = tiles.Select(tileSerializer).ToList();
@@ -131,7 +133,7 @@ public sealed class ProvablyFairCommitment : IEquatable<ProvablyFairCommitment>
             WriteIndented = false // Compact JSON
         });
 
-        return new ProvablyFairCommitment(serverSeed, initialState, nonce);
+        return new ProvablyFairCommitment(actualServerSeed, initialState, nonce);
     }
 
     /// <summary>

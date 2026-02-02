@@ -244,12 +244,16 @@ public class GameService : IGameService
             return (false, $"Oyun başlatmak için {MaxPlayers} oyuncu gerekli. Bot eklemek için StartGameWithBots kullanın.");
         }
 
-        // Taşları oluştur ve karıştır
-        var tiles = TileFactory.CreateFullSet();
-        FisherYatesShuffle.Shuffle(tiles);
+        // Deterministik karıştırma için seed oluştur
+        var serverSeed = Guid.NewGuid(); // Güvenli bir Guid oluşturulabilir
 
-        // Provably Fair commitment oluştur
-        var commitment = _provablyFairService.CreateCommitment(roomId, tiles);
+        // Taşları oluştur ve deterministik olarak karıştır
+        var tiles = TileFactory.CreateFullSet();
+        var rng = new DeterministicRandomGenerator(serverSeed.ToString());
+        FisherYatesShuffle.ShuffleWithRng(tiles, rng);
+
+        // Provably Fair commitment oluştur (aynı seed ile)
+        var commitment = _provablyFairService.CreateCommitment(roomId, tiles, serverSeed);
         state.CommitmentHash = commitment.CommitmentHash;
         state.ServerSeed = commitment.ServerSeed.ToString();
         state.InitialState = commitment.InitialState;
@@ -266,7 +270,7 @@ public class GameService : IGameService
 
         // Gösterge taşını belirle
         var normalTiles = tiles.Where(t => !t.IsFalseJoker).ToList();
-        var rng = CryptoRandomGenerator.Instance;
+        // Deterministic RNG kullanıyoruz
         var indicatorIndex = rng.NextInt(normalTiles.Count);
         var indicatorTile = normalTiles[indicatorIndex];
         state.IndicatorTileId = indicatorTile.Id;
@@ -300,7 +304,13 @@ public class GameService : IGameService
 
         // Kalan taşları desteye koy
         state.DeckTileIds = tileQueue.Select(t => t.Id).ToList();
-        state.DiscardPileTileIds = new List<int>();
+
+        // Atık yığınlarını başlat
+        state.DiscardPiles = new Dictionary<Guid, List<int>>();
+        foreach (var pId in state.Players.Keys)
+        {
+            state.DiscardPiles[pId] = new List<int>();
+        }
 
         // Durumu güncelle
         state.State = GameState.InProgress;
@@ -359,12 +369,23 @@ public class GameService : IGameService
 
         if (fromDiscard)
         {
-            if (state.DiscardPileTileIds.Count == 0)
+            // Önceki oyuncuyu bul (saat yönünde oyun akışı varsayımıyla)
+            var currentPos = (int)player.Position;
+            var prevPos = (currentPos - 1 + 4) % 4;
+            var prevPlayer = state.Players.Values.FirstOrDefault(p => (int)p.Position == prevPos);
+
+            if (prevPlayer == null)
+            {
+                 return new DrawTileResultDto { Success = false, ErrorMessage = "Önceki oyuncu bulunamadı." };
+            }
+
+            if (!state.DiscardPiles.TryGetValue(prevPlayer.PlayerId, out var pile) || pile.Count == 0)
             {
                 return new DrawTileResultDto { Success = false, ErrorMessage = "Atık yığınında taş yok." };
             }
-            drawnTileId = state.DiscardPileTileIds[^1];
-            state.DiscardPileTileIds.RemoveAt(state.DiscardPileTileIds.Count - 1);
+
+            drawnTileId = pile[^1];
+            pile.RemoveAt(pile.Count - 1);
         }
         else
         {
@@ -434,7 +455,12 @@ public class GameService : IGameService
 
         // Taşı elden çıkar ve atık yığınına ekle
         player.HandTileIds.Remove(tileId);
-        state.DiscardPileTileIds.Add(tileId);
+
+        if (!state.DiscardPiles.ContainsKey(playerId))
+        {
+             state.DiscardPiles[playerId] = new List<int>();
+        }
+        state.DiscardPiles[playerId].Add(tileId);
 
         // Sırayı sonraki oyuncuya geçir
         player.IsCurrentTurn = false;
@@ -488,6 +514,17 @@ public class GameService : IGameService
             return null;
         }
 
+        // Helper: Oyuncunun atık yığınındaki son taşı bul
+        TileDto? GetDiscardTop(Guid pId)
+        {
+            if (state.DiscardPiles.TryGetValue(pId, out var pile) && pile.Count > 0)
+            {
+                var tile = GetTileFromState(state, pile[^1]);
+                return tile != null ? MapToTileDto(tile, state.IndicatorTileId) : null;
+            }
+            return null;
+        }
+
         // Oyuncunun elini oluştur
         var handTiles = player.HandTileIds
             .Select(id => GetTileFromState(state, id))
@@ -502,7 +539,8 @@ public class GameService : IGameService
             Position = player.Position,
             Hand = handTiles,
             IsCurrentTurn = player.IsCurrentTurn,
-            IsConnected = player.IsConnected
+            IsConnected = player.IsConnected,
+            DiscardPileTopTile = GetDiscardTop(player.PlayerId)
         };
 
         // Rakipleri oluştur (eller GİZLİ)
@@ -515,7 +553,8 @@ public class GameService : IGameService
                 Position = p.Position,
                 TileCount = p.HandTileIds.Count,
                 IsCurrentTurn = p.IsCurrentTurn,
-                IsConnected = p.IsConnected
+                IsConnected = p.IsConnected,
+                DiscardPileTopTile = GetDiscardTop(p.PlayerId)
             })
             .ToList();
 
@@ -523,17 +562,6 @@ public class GameService : IGameService
         var indicatorTile = state.IndicatorTileId.HasValue
             ? GetTileFromState(state, state.IndicatorTileId.Value)
             : null;
-
-        // Atık yığını üstündeki taş
-        TileDto? discardTop = null;
-        if (state.DiscardPileTileIds.Count > 0)
-        {
-            var topTile = GetTileFromState(state, state.DiscardPileTileIds[^1]);
-            if (topTile != null)
-            {
-                discardTop = MapToTileDto(topTile, state.IndicatorTileId);
-            }
-        }
 
         return new GameStateDto
         {
@@ -544,7 +572,6 @@ public class GameService : IGameService
             Opponents = opponents,
             IndicatorTile = indicatorTile != null ? MapToTileDto(indicatorTile, state.IndicatorTileId) : null!,
             RemainingTileCount = state.DeckTileIds.Count,
-            DiscardPileTopTile = discardTop,
             GameStartedAt = state.GameStartedAt ?? DateTime.UtcNow,
             ServerTimestamp = DateTime.UtcNow
         };

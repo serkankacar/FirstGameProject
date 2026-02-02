@@ -12,7 +12,7 @@ namespace OkeyGame.Domain.Services;
 /// - Thread-safe implementasyon için lock mekanizması kullanılır.
 /// - Provably Fair (matematiksel olarak kanıtlanabilir adalet) için gereklidir.
 /// </summary>
-public sealed class CryptoRandomGenerator : IDisposable
+public sealed class CryptoRandomGenerator : IRandomGenerator, IDisposable
 {
     #region Singleton Pattern
 
