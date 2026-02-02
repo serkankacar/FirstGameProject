@@ -23,7 +23,10 @@ public class GameRoomStateTests
             RoomName = "Test Room",
             State = GameState.InProgress,
             DeckTileIds = new List<int> { 1, 2, 3, 4, 5 },
-            DiscardPileTileIds = new List<int> { 6, 7 },
+            DiscardPiles = new Dictionary<Guid, List<int>>
+            {
+                { playerId, new List<int> { 6, 7 } }
+            },
             IndicatorTileId = 10,
             CommitmentHash = "abc123",
             CurrentTurnPosition = PlayerPosition.East
@@ -49,7 +52,8 @@ public class GameRoomStateTests
         Assert.Equal("Test Room", deserialized.RoomName);
         Assert.Equal(GameState.InProgress, deserialized.State);
         Assert.Equal(5, deserialized.DeckTileIds.Count);
-        Assert.Equal(2, deserialized.DiscardPileTileIds.Count);
+        Assert.True(deserialized.DiscardPiles.ContainsKey(playerId));
+        Assert.Equal(2, deserialized.DiscardPiles[playerId].Count);
         Assert.Equal(10, deserialized.IndicatorTileId);
         Assert.Equal("abc123", deserialized.CommitmentHash);
         Assert.Equal(PlayerPosition.East, deserialized.CurrentTurnPosition);

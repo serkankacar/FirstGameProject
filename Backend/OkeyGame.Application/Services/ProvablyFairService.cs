@@ -56,8 +56,9 @@ public class ProvablyFairService
     /// </summary>
     /// <param name="roomId">Oda ID'si</param>
     /// <param name="shuffledTiles">Karıştırılmış taş listesi</param>
+    /// <param name="serverSeed">Özel sunucu seed'i (opsiyonel)</param>
     /// <returns>Oluşturulan commitment</returns>
-    public ProvablyFairCommitment CreateCommitment(Guid roomId, List<Tile> shuffledTiles)
+    public ProvablyFairCommitment CreateCommitment(Guid roomId, List<Tile> shuffledTiles, Guid? serverSeed = null)
     {
         ArgumentNullException.ThrowIfNull(shuffledTiles);
 
@@ -76,7 +77,8 @@ public class ProvablyFairService
                     Color = tile.Color.ToString(),
                     tile.Value,
                     tile.IsFalseJoker
-                });
+                },
+                serverSeed);
 
             // Sakla
             _commitments[roomId] = commitment;

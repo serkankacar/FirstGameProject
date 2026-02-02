@@ -51,12 +51,6 @@ public class GameStateDto
     public required int RemainingTileCount { get; init; }
 
     /// <summary>
-    /// Atık yığınının en üstündeki taş (varsa).
-    /// Bu taş açık olduğu için gösterilebilir.
-    /// </summary>
-    public TileDto? DiscardPileTopTile { get; init; }
-
-    /// <summary>
     /// Oyunun başlama zamanı (UTC).
     /// </summary>
     public required DateTime GameStartedAt { get; init; }
@@ -104,6 +98,11 @@ public class PlayerDto
     /// Bağlantı durumu.
     /// </summary>
     public required bool IsConnected { get; init; }
+
+    /// <summary>
+    /// Oyuncunun atık yığınının en üstündeki taş (varsa).
+    /// </summary>
+    public TileDto? DiscardPileTopTile { get; init; }
 }
 
 /// <summary>
@@ -142,6 +141,11 @@ public class OpponentDto
     /// Bağlantı durumu.
     /// </summary>
     public required bool IsConnected { get; init; }
+
+    /// <summary>
+    /// Oyuncunun atık yığınının en üstündeki taş (varsa).
+    /// </summary>
+    public TileDto? DiscardPileTopTile { get; init; }
 }
 
 /// <summary>

@@ -45,7 +45,7 @@ public static class FisherYatesShuffle
     /// <typeparam name="T">Liste eleman tipi</typeparam>
     /// <param name="list">Karıştırılacak liste</param>
     /// <param name="rng">Rastgele sayı üreteci</param>
-    public static void ShuffleWithRng<T>(IList<T> list, CryptoRandomGenerator rng)
+    public static void ShuffleWithRng<T>(IList<T> list, IRandomGenerator rng)
     {
         ArgumentNullException.ThrowIfNull(list);
         ArgumentNullException.ThrowIfNull(rng);
@@ -93,7 +93,7 @@ public static class FisherYatesShuffle
     /// <param name="source">Kaynak liste</param>
     /// <param name="rng">Rastgele sayı üreteci</param>
     /// <returns>Karıştırılmış yeni liste</returns>
-    public static List<T> ShuffleToNewWithRng<T>(IEnumerable<T> source, CryptoRandomGenerator rng)
+    public static List<T> ShuffleToNewWithRng<T>(IEnumerable<T> source, IRandomGenerator rng)
     {
         ArgumentNullException.ThrowIfNull(source);
         ArgumentNullException.ThrowIfNull(rng);

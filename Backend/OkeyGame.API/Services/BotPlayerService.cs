@@ -282,13 +282,24 @@ public class BotPlayerService : IBotPlayerService
             return new BotMoveResult { Success = false, Message = "Bot oyuncu bulunamadı." };
         }
 
+        // Önceki oyuncunun atık yığınını bul
+        var currentPos = (int)player.Position;
+        var prevPos = (currentPos - 1 + 4) % 4;
+        var prevPlayer = state.Players.Values.FirstOrDefault(p => (int)p.Position == prevPos);
+        List<int>? targetDiscardPile = null;
+
+        if (prevPlayer != null && state.DiscardPiles.TryGetValue(prevPlayer.PlayerId, out var pile))
+        {
+            targetDiscardPile = pile;
+        }
+
         bool drewFromDiscard = drawDecision.ShouldDrawFromDiscard;
         int drawnTileId;
 
-        if (drewFromDiscard && state.DiscardPileTileIds.Count > 0)
+        if (drewFromDiscard && targetDiscardPile != null && targetDiscardPile.Count > 0)
         {
-            drawnTileId = state.DiscardPileTileIds[^1];
-            state.DiscardPileTileIds.RemoveAt(state.DiscardPileTileIds.Count - 1);
+            drawnTileId = targetDiscardPile[^1];
+            targetDiscardPile.RemoveAt(targetDiscardPile.Count - 1);
         }
         else if (state.DeckTileIds.Count > 0)
         {
@@ -328,17 +339,23 @@ public class BotPlayerService : IBotPlayerService
         await Task.Delay(discardDecision.ThinkingTimeMs);
 
         // 4. Taşı at
+        if (!state.DiscardPiles.ContainsKey(botId))
+        {
+            state.DiscardPiles[botId] = new List<int>();
+        }
+        var botDiscardPile = state.DiscardPiles[botId];
+
         if (discardDecision.Tile == null || !player.HandTileIds.Contains(discardDecision.Tile.Id))
         {
             // Fallback: Rastgele taş at
             var fallbackTileId = player.HandTileIds[_random.Next(player.HandTileIds.Count)];
             player.HandTileIds.Remove(fallbackTileId);
-            state.DiscardPileTileIds.Add(fallbackTileId);
+            botDiscardPile.Add(fallbackTileId);
         }
         else
         {
             player.HandTileIds.Remove(discardDecision.Tile.Id);
-            state.DiscardPileTileIds.Add(discardDecision.Tile.Id);
+            botDiscardPile.Add(discardDecision.Tile.Id);
         }
 
         player.HasDrawnThisTurn = false;
@@ -359,7 +376,7 @@ public class BotPlayerService : IBotPlayerService
         await _stateService.SaveRoomStateAsync(state);
 
         // Atılan taş bildirimi - tam taş bilgisiyle
-        var discardedTileId = discardDecision.Tile?.Id ?? state.DiscardPileTileIds[^1];
+        var discardedTileId = discardDecision.Tile?.Id ?? state.DiscardPiles[botId][^1];
         var discardedTileInfo = GetTileFromState(state, discardedTileId);
         
         await _hubContext.Clients.Group($"room:{roomId}")
@@ -384,7 +401,7 @@ public class BotPlayerService : IBotPlayerService
             .SendAsync("OnDeckUpdated", new
             {
                 RemainingTileCount = state.DeckTileIds.Count,
-                DiscardPileCount = state.DiscardPileTileIds.Count
+                DiscardPileCount = state.DiscardPiles.Values.Sum(p => p.Count)
             });
 
         _logger.LogDebug(
@@ -429,11 +446,18 @@ public class BotPlayerService : IBotPlayerService
 
         _logger.LogDebug("Bot sırası tespit edildi: {BotId}, Oda: {RoomId}", currentPlayerId.Value, roomId);
 
-        // Son atılan taşı bul
+        // Son atılan taşı bul (Önceki oyuncunun attığı)
         Tile? lastDiscardedTile = null;
-        if (state.DiscardPileTileIds.Count > 0)
+
+        var currentPos = (int)state.Players[currentPlayerId.Value].Position;
+        var prevPos = (currentPos - 1 + 4) % 4;
+        var prevPlayer = state.Players.Values.FirstOrDefault(p => (int)p.Position == prevPos);
+
+        if (prevPlayer != null &&
+            state.DiscardPiles.TryGetValue(prevPlayer.PlayerId, out var pile) &&
+            pile.Count > 0)
         {
-            var lastTileId = state.DiscardPileTileIds[^1];
+            var lastTileId = pile[^1];
             lastDiscardedTile = GetTileFromState(state, lastTileId);
         }
 

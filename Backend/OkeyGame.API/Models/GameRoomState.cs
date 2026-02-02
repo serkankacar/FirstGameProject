@@ -75,9 +75,10 @@ public class GameRoomState
     public List<int> DeckTileIds { get; set; } = new();
 
     /// <summary>
-    /// Atık yığınındaki taşlar (en üstte son eleman).
+    /// Oyuncuların atık yığınlarındaki taşlar.
+    /// Key: PlayerId, Value: Taş ID listesi
     /// </summary>
-    public List<int> DiscardPileTileIds { get; set; } = new();
+    public Dictionary<Guid, List<int>> DiscardPiles { get; set; } = new();
 
     /// <summary>
     /// Gösterge taşı ID'si.

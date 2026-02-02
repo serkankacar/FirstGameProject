@@ -403,7 +403,8 @@ public class OkeyGameEngine
             Position = player.Position,
             Hand = player.Hand.Select(MapToTileDto).ToList(),
             IsCurrentTurn = player.IsCurrentTurn,
-            IsConnected = player.IsConnected
+            IsConnected = player.IsConnected,
+            DiscardPileTopTile = null // OkeyGameEngine eski mantığı kullanıyor
         };
 
         // Rakip bilgilerini oluştur (el HARİÇ - sadece taş sayısı)
@@ -416,14 +417,10 @@ public class OkeyGameEngine
                 Position = p.Position,
                 TileCount = p.TileCount, // Sadece sayı, taşlar DEĞİL
                 IsCurrentTurn = p.IsCurrentTurn,
-                IsConnected = p.IsConnected
+                IsConnected = p.IsConnected,
+                DiscardPileTopTile = null // OkeyGameEngine eski mantığı kullanıyor
             })
             .ToList();
-
-        // Atık yığınının üstündeki taş (varsa)
-        TileDto? discardTop = _discardPile.Count > 0 
-            ? MapToTileDto(_discardPile.Peek()) 
-            : null;
 
         return new GameStateDto
         {
@@ -434,7 +431,6 @@ public class OkeyGameEngine
             Opponents = opponentDtos,
             IndicatorTile = MapToTileDto(_indicatorTile),
             RemainingTileCount = _deck.Count, // Sadece sayı
-            DiscardPileTopTile = discardTop,
             GameStartedAt = _gameStartedAt,
             ServerTimestamp = DateTime.UtcNow
         };

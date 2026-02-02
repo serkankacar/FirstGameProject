@@ -488,7 +488,7 @@ public class GameHub : Hub
                     .SendAsync("OnDeckUpdated", new
                     {
                         RemainingTileCount = roomState.DeckTileIds.Count,
-                        DiscardPileCount = roomState.DiscardPileTileIds.Count
+                        DiscardPileCount = roomState.DiscardPiles.Values.Sum(p => p.Count)
                     });
             }
         }
